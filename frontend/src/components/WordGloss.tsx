@@ -4,6 +4,10 @@ interface Props {
   words: SentenceWord[];
 }
 
+function playWordAudio(path: string) {
+  new Audio(`/audio/${path}`).play();
+}
+
 export default function WordGloss({ words }: Props) {
   return (
     <table
@@ -18,7 +22,8 @@ export default function WordGloss({ words }: Props) {
         <tr style={{ color: "#888", textAlign: "left" }}>
           <th style={{ padding: "0.3rem 0.75rem 0.3rem 0", fontWeight: "normal" }}>Hindi</th>
           <th style={{ padding: "0.3rem 0.75rem", fontWeight: "normal" }}>Transliteration</th>
-          <th style={{ padding: "0.3rem 0 0.3rem 0.75rem", fontWeight: "normal" }}>Gloss</th>
+          <th style={{ padding: "0.3rem 0.75rem", fontWeight: "normal" }}>Gloss</th>
+          <th style={{ padding: "0.3rem 0 0.3rem 0.75rem", fontWeight: "normal" }}></th>
         </tr>
       </thead>
       <tbody>
@@ -30,8 +35,27 @@ export default function WordGloss({ words }: Props) {
             <td style={{ padding: "0.3rem 0.75rem", fontStyle: "italic", color: "#ccc" }}>
               {word.surface_romanized}
             </td>
-            <td style={{ padding: "0.3rem 0 0.3rem 0.75rem", color: "#aaa" }}>
-              {word.english_gloss || "—"}
+            <td style={{ padding: "0.3rem 0.75rem", color: "#aaa" }}>
+              {word.word_sense_definition ?? word.english_gloss ?? "—"}
+            </td>
+            <td style={{ padding: "0.3rem 0 0.3rem 0.75rem" }}>
+              {word.word_audio_path && (
+                <button
+                  onClick={() => playWordAudio(word.word_audio_path!)}
+                  title="Pronounce"
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: "0",
+                    fontSize: "0.8rem",
+                    color: "#aaa",
+                    lineHeight: 1,
+                  }}
+                >
+                  ▶
+                </button>
+              )}
             </td>
           </tr>
         ))}

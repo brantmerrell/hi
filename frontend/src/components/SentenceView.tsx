@@ -16,6 +16,10 @@ const label: React.CSSProperties = {
   marginBottom: "0.2rem",
 };
 
+function playWordAudio(path: string) {
+  new Audio(`/audio/${path}`).play();
+}
+
 export default function SentenceView({ sentence }: Props) {
   return (
     <div style={{ lineHeight: 1.6 }}>
@@ -33,6 +37,23 @@ export default function SentenceView({ sentence }: Props) {
               <div style={{ fontSize: "0.75rem", color: "#777" }}>
                 {w.word_sense_definition ?? w.english_gloss ?? "—"}
               </div>
+              {w.word_audio_path && (
+                <button
+                  onClick={() => playWordAudio(w.word_audio_path!)}
+                  title="Pronounce"
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: "0",
+                    fontSize: "0.75rem",
+                    color: "#aaa",
+                    lineHeight: 1,
+                  }}
+                >
+                  ▶
+                </button>
+              )}
             </div>
           ))}
         </div>

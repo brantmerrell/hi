@@ -120,6 +120,7 @@ class SentenceWord(Base):
     word_sense_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("word_senses.id"), nullable=True
     )
+    word_audio_path: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
     sentence: Mapped["Sentence"] = relationship("Sentence", back_populates="words")
     lemma: Mapped[Optional["Lemma"]] = relationship("Lemma", back_populates="sentence_words")

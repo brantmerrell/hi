@@ -5,6 +5,7 @@ export interface SentenceWord {
   surface_romanized: string;
   english_gloss: string;
   word_sense_definition: string | null;
+  word_audio_path: string | null;
 }
 
 export interface Sentence {

@@ -16,6 +16,7 @@ class SentenceWordOut(BaseModel):
     surface_romanized: str
     english_gloss: str
     word_sense_definition: Optional[str] = None
+    word_audio_path: Optional[str] = None
 
 
 # ── Sentence-level ────────────────────────────────────────────────────────────

@@ -1,7 +1,9 @@
 import os
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.routes import auth, sentences, stats, stories
 
@@ -27,6 +29,12 @@ app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(stories.router, prefix="/stories", tags=["stories"])
 app.include_router(sentences.router, prefix="/sentences", tags=["sentences"])
 app.include_router(stats.router, prefix="/stats", tags=["stats"])
+
+
+# ── Static files ─────────────────────────────────────────────────────────────
+_audio_dir = Path(__file__).parent.parent.parent / "data" / "audio"
+_audio_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/audio", StaticFiles(directory=str(_audio_dir)), name="audio")
 
 
 # ── Health check ──────────────────────────────────────────────────────────────
