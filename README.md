@@ -122,13 +122,18 @@ python process_sentences.py <slug>
 
 # Step 3 — enrich each word with a dictionary-level gloss
 python enrich_glosses.py
+
+# Step 4 — generate Hindi pronunciation MP3s via Google Cloud TTS
+python generate_audio.py
 ```
 
-**Why three steps?**
+**Why four steps?**
 
 `process_sentences.py` translates full sentences and uses Azure's word-alignment to map Hindi words to fragments of the English translation. This is the *contextual* gloss — useful but incomplete. Idiomatic expressions (e.g. चोरी छिपे → "secretly") produce empty glosses for the individual words because their meaning was absorbed into the sentence translation.
 
 `enrich_glosses.py` translates each unique word form individually, producing a *dictionary-level* gloss ("theft", "hidden"). The word-for-word display layer uses this. The sentence-level English translation remains the contextual one from Step 2.
+
+`generate_audio.py` calls Google Cloud TTS (voice: hi-IN-Wavenet-D) for each sentence, saves MP3s to `data/audio/<story_id>/<seq>.mp3`, and writes the relative path to `sentences.audio_path`. Audio files are served as static files by FastAPI at `/audio/`.
 
 ---
 
@@ -163,7 +168,8 @@ hi/
 ├── pipeline/
 │   ├── fetch_text.py        — fetch Premchand stories from Wikisource / Internet Archive
 │   ├── process_sentences.py — segment, translate (sentence-level), insert sentences + word alignment
-│   └── enrich_glosses.py    — per-word dictionary translation; populates lemmas + word_senses
+│   ├── enrich_glosses.py    — per-word dictionary translation; populates lemmas + word_senses
+│   └── generate_audio.py    — Google Cloud TTS; saves MP3s and updates sentences.audio_path
 ├── docker-compose.yml       — PostgreSQL 16
 ├── PROJECT.md               — design rationale and architecture
 └── characters.md            — Devanagari character reference for the developer

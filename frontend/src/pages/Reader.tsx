@@ -61,14 +61,14 @@ export default function Reader() {
         </header>
       )}
 
-      {sentence && <SentenceView sentence={sentence} />}
+      {sentence && !showGloss && <SentenceView sentence={sentence} />}
 
       <div style={{ marginTop: "1rem" }}>
         <button
           onClick={() => setShowGloss((v) => !v)}
           style={{ fontSize: "0.85rem", padding: "0.3rem 0.75rem" }}
         >
-          {showGloss ? "Hide" : "Show"} word-by-word
+          {showGloss ? "Show sentence" : "Show word-by-word"}
         </button>
       </div>
 
