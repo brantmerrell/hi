@@ -19,7 +19,7 @@ import os
 import secrets
 from datetime import datetime, timedelta, timezone
 
-import resend
+import boto3
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response
 from jose import JWTError, jwt
 from sqlalchemy import select
@@ -94,21 +94,26 @@ async def request_magic_link(
     db.add(magic_link)
     await db.flush()
 
-    # Send email via Resend
-    resend_api_key = os.environ.get("RESEND_API_KEY", "")
-    if resend_api_key:
-        resend.api_key = resend_api_key
-        link_url = f"{FRONTEND_URL}/auth?token={token}"
-        resend.Emails.send({
-            "from": FROM_EMAIL,
-            "to": [email],
-            "subject": "Your Hindi App login link",
-            "html": (
-                f"<p>Click the link below to log in. It expires in "
-                f"{MAGIC_LINK_EXPIRE_MINUTES} minutes.</p>"
-                f'<p><a href="{link_url}">{link_url}</a></p>'
-            ),
-        })
+    # Send email via AWS SES
+    aws_region = os.environ.get("AWS_REGION", "us-east-2")
+    link_url = f"{FRONTEND_URL}/auth?token={token}"
+    ses = boto3.client("ses", region_name=aws_region)
+    ses.send_email(
+        Source=FROM_EMAIL,
+        Destination={"ToAddresses": [email]},
+        Message={
+            "Subject": {"Data": "Your Hindi App login link"},
+            "Body": {
+                "Html": {
+                    "Data": (
+                        f"<p>Click the link below to log in. It expires in "
+                        f"{MAGIC_LINK_EXPIRE_MINUTES} minutes.</p>"
+                        f'<p><a href="{link_url}">{link_url}</a></p>'
+                    )
+                }
+            },
+        },
+    )
 
     return {"message": "check your email"}
 

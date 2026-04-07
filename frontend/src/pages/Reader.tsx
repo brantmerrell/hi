@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import AudioPlayer from "../components/AudioPlayer";
 import Navigation from "../components/Navigation";
 import SentenceView from "../components/SentenceView";
 import WordGloss from "../components/WordGloss";
+import { useAuth } from "../context/AuthContext";
 import type { Sentence, Story } from "../types";
 
 export default function Reader() {
+  const { user } = useAuth();
   const [stories, setStories] = useState<Story[]>([]);
   const [sentences, setSentences] = useState<Sentence[]>([]);
   const [index, setIndex] = useState(0);
@@ -52,6 +55,14 @@ export default function Reader() {
 
   return (
     <main style={{ maxWidth: 720, margin: "0 auto", padding: "2rem 1rem" }}>
+      <div style={{ textAlign: "right", fontSize: "0.8rem", color: "#888", marginBottom: "0.5rem" }}>
+        {user ? (
+          <span>{user.display_name ?? user.email}</span>
+        ) : (
+          <Link to="/auth">Sign in</Link>
+        )}
+      </div>
+
       {story && (
         <header style={{ marginBottom: "1.5rem" }}>
           <h1 style={{ margin: 0 }}>{story.title_hi}</h1>

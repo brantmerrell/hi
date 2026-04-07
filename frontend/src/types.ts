@@ -25,3 +25,9 @@ export interface Story {
   title_hi: string;
   author: string;
 }
+
+export interface User {
+  id: string;
+  email: string;
+  display_name: string | null;
+}
