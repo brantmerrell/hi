@@ -153,6 +153,13 @@ async def verify_magic_link(
     return {"message": "authenticated"}
 
 
+@router.post("/logout")
+async def logout(response: Response) -> dict:
+    """Clear the session cookie."""
+    response.delete_cookie(key="session_token", httponly=True, samesite="lax")
+    return {"message": "logged out"}
+
+
 @router.get("/me", response_model=UserOut)
 async def get_me(current_user: User = Depends(get_current_user)) -> User:
     """Return the currently authenticated user."""

@@ -8,7 +8,7 @@ import { useAuth } from "../context/AuthContext";
 import type { Sentence, Story } from "../types";
 
 export default function Reader() {
-  const { user } = useAuth();
+  const { user, setUser } = useAuth();
   const [stories, setStories] = useState<Story[]>([]);
   const [sentences, setSentences] = useState<Sentence[]>([]);
   const [index, setIndex] = useState(0);
@@ -57,7 +57,19 @@ export default function Reader() {
     <main style={{ maxWidth: 720, margin: "0 auto", padding: "2rem 1rem" }}>
       <div style={{ textAlign: "right", fontSize: "0.8rem", color: "#888", marginBottom: "0.5rem" }}>
         {user ? (
-          <span>{user.display_name ?? user.email}</span>
+          <>
+            <span>{user.display_name ?? user.email}</span>
+            {" · "}
+            <button
+              onClick={() =>
+                fetch("/api/auth/logout", { method: "POST", credentials: "include" })
+                  .then(() => setUser(null))
+              }
+              style={{ background: "none", border: "none", cursor: "pointer", color: "#888", fontSize: "0.8rem", padding: 0 }}
+            >
+              Sign out
+            </button>
+          </>
         ) : (
           <Link to="/auth">Sign in</Link>
         )}
