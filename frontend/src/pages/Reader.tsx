@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import AudioPlayer from "../components/AudioPlayer";
 import Navigation from "../components/Navigation";
@@ -15,8 +15,11 @@ export default function Reader() {
   const [showGloss, setShowGloss] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Tracks whether the current index was set by loading a bookmark (not user navigation),
+  // so we don't immediately write it back as a save.
+  const bookmarkLoadedRef = useRef(false);
 
-  // Load stories on mount, then load sentences for the first story
+  // Load stories, sentences, then bookmark
   useEffect(() => {
     async function load() {
       try {
@@ -38,6 +41,19 @@ export default function Reader() {
         if (!sentencesRes.ok) throw new Error("Failed to fetch sentences");
         const sentencesData: Sentence[] = await sentencesRes.json();
         setSentences(sentencesData);
+
+        // Load bookmark if signed in
+        const bmRes = await fetch(`/api/bookmarks/${story.id}`, {
+          credentials: "include",
+        });
+        if (bmRes.ok) {
+          const bm = await bmRes.json();
+          const savedIndex = sentencesData.findIndex((s) => s.id === bm.sentence_id);
+          if (savedIndex !== -1) {
+            bookmarkLoadedRef.current = true;
+            setIndex(savedIndex);
+          }
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Unknown error");
       } finally {
@@ -46,6 +62,24 @@ export default function Reader() {
     }
     load();
   }, []);
+
+  // Save bookmark whenever index changes (skip the initial load)
+  useEffect(() => {
+    if (bookmarkLoadedRef.current) {
+      bookmarkLoadedRef.current = false;
+      return;
+    }
+    const story = stories[0];
+    const sentence = sentences[index];
+    if (!user || !story || !sentence) return;
+
+    fetch(`/api/bookmarks/${story.id}`, {
+      method: "PUT",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sentence_id: sentence.id }),
+    });
+  }, [index]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) return <main><p>Loading...</p></main>;
   if (error) return <main><p>Error: {error}</p></main>;

@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.routes import auth, sentences, stats, stories
+from app.routes import auth, bookmarks, sentences, stats, stories
 
 app = FastAPI(
     title="Hindi Language Learning API",
@@ -32,6 +32,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(stories.router, prefix="/stories", tags=["stories"])
 app.include_router(sentences.router, prefix="/sentences", tags=["sentences"])
+app.include_router(bookmarks.router, prefix="/bookmarks", tags=["bookmarks"])
 app.include_router(stats.router, prefix="/stats", tags=["stats"])
 
 

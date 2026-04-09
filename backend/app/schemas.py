@@ -63,6 +63,10 @@ class AuthRequest(BaseModel):
 
 # ── Bookmarks ─────────────────────────────────────────────────────────────────
 
+class BookmarkIn(BaseModel):
+    sentence_id: uuid.UUID
+
+
 class BookmarkOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
