@@ -1,11 +1,18 @@
+import { useAuth } from "../context/AuthContext";
 import type { SentenceWord } from "../types";
 
 interface Props {
   words: SentenceWord[];
 }
 
-function playWordAudio(path: string) {
+function playWordAudio(path: string, wordId: string | null) {
   new Audio(`/audio/${path}`).play();
+  if (wordId) {
+    fetch(`/api/sentences/words/${wordId}/played`, {
+      method: "POST",
+      credentials: "include",
+    });
+  }
 }
 
 export default function WordGloss({ words }: Props) {
@@ -41,7 +48,7 @@ export default function WordGloss({ words }: Props) {
             <td style={{ padding: "0.3rem 0 0.3rem 0.75rem" }}>
               {word.word_audio_path && (
                 <button
-                  onClick={() => playWordAudio(word.word_audio_path!)}
+                  onClick={() => playWordAudio(word.word_audio_path!, word.id)}
                   title="Pronounce"
                   style={{
                     background: "none",

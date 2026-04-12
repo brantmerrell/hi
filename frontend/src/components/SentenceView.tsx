@@ -16,8 +16,14 @@ const label: React.CSSProperties = {
   marginBottom: "0.2rem",
 };
 
-function playWordAudio(path: string) {
+function playWordAudio(path: string, wordId: string | null) {
   new Audio(`/audio/${path}`).play();
+  if (wordId) {
+    fetch(`/api/sentences/words/${wordId}/played`, {
+      method: "POST",
+      credentials: "include",
+    });
+  }
 }
 
 export default function SentenceView({ sentence }: Props) {
@@ -39,7 +45,7 @@ export default function SentenceView({ sentence }: Props) {
               </div>
               {w.word_audio_path && (
                 <button
-                  onClick={() => playWordAudio(w.word_audio_path!)}
+                  onClick={() => playWordAudio(w.word_audio_path!, w.id)}
                   title="Pronounce"
                   style={{
                     background: "none",

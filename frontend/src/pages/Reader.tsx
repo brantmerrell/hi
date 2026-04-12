@@ -94,6 +94,10 @@ export default function Reader() {
           <>
             <span>{user.display_name ?? user.email}</span>
             {" · "}
+            <Link to="/stats" style={{ color: "#888" }}>
+              Stats
+            </Link>
+            {" · "}
             <button
               onClick={() =>
                 fetch("/api/auth/logout", { method: "POST", credentials: "include" })
@@ -131,7 +135,7 @@ export default function Reader() {
 
       {showGloss && sentence && <WordGloss words={sentence.words} />}
 
-      {sentence && <AudioPlayer audioPath={sentence.audio_path} />}
+      {sentence && <AudioPlayer audioPath={sentence.audio_path} sentenceId={sentence.id} />}
 
       <Navigation
         onPrev={() => setIndex((i) => Math.max(0, i - 1))}

@@ -77,6 +77,15 @@ class BookmarkOut(BaseModel):
 
 # ── Statistics ────────────────────────────────────────────────────────────────
 
+class WordStatOut(BaseModel):
+    surface_devanagari: str
+    surface_romanized: str
+    english_gloss: str
+    play_count: int
+    word_audio_path: str | None = None
+    sentence_word_id: str | None = None
+
+
 class StatsOut(BaseModel):
     unique_surface_forms_read: int
     unique_lemmas_read: int

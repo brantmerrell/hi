@@ -12,6 +12,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import Auth from "./pages/Auth";
 import Reader from "./pages/Reader";
+import Stats from "./pages/Stats";
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Reader />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/stats" element={<Stats />} />
           {/* Catch-all: redirect unknown paths to home */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

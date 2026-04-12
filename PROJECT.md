@@ -19,14 +19,15 @@ A sentence-by-sentence reader of Hindi prose that displays each sentence in four
 
 | Feature | Status |
 |---|---|
-| Display sentence in four layers | Planned |
-| Step forward / backward through sentences | Planned |
-| Audio playback of Hindi pronunciation | Planned |
-| Toggle word-level translation view | Planned |
-| User bookmarks (persistent across devices) | Planned |
+| Display sentence in four layers | Done |
+| Step forward / backward through sentences | Done |
+| Audio playback of Hindi pronunciation | Done |
+| Toggle word-level translation view | Done |
+| Magic link email authentication | Done |
+| User bookmarks (persistent across devices) | Next |
 | Reading statistics (unique words, repetitions, gender breakdown) | Planned |
-| Magic link email authentication | Planned |
 | Pre-processing pipeline (text → DB) | Planned |
+| Custom sending domain for SES (jbm.eco) | Planned |
 
 ---
 
