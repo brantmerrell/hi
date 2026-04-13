@@ -95,6 +95,50 @@ Steps 2–4 produce sentence-level English translations, word-level alignments, 
 
 ---
 
+## Deployment
+
+### Backend (Heroku)
+
+```bash
+# Create Heroku app with config from app.json (first time only)
+heroku create hi-api
+
+# This automatically provisions:
+# - Python buildpack
+# - PostgreSQL database (essential-0 plan)
+# - Environment variables defined in backend/app.json
+
+# Configure required environment variables from your .env
+heroku config:set AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -a hi-api
+heroku config:set AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY -a hi-api
+heroku config:set FROM_EMAIL=$FROM_EMAIL -a hi-api
+heroku config:set AZURE_TRANSLATOR_KEY=$AZURE_TRANSLATOR_KEY -a hi-api
+heroku config:set GOOGLE_CLOUD_API_KEY=$GOOGLE_CLOUD_API_KEY -a hi-api
+heroku buildpacks:set heroku/docker -a hi-api
+
+
+# Deploy
+git push heroku main
+
+# Set custom domain
+heroku domains:add hi-api.jbm.eco -a hi-api
+```
+
+Update your DNS provider to point `hi-api.jbm.eco` to the Heroku app's DNS target.
+
+### Frontend (GitHub Pages)
+
+The frontend automatically deploys via GitHub Actions when you push to `main`. The workflow:
+1. Builds the React app with `VITE_API_URL=https://hi-api.jbm.eco`
+2. Deploys the `frontend/dist` directory to GitHub Pages
+
+To set up the custom domain for GitHub Pages:
+1. Go to repository Settings → Pages
+2. Set Custom domain to `hi.jbm.eco`
+3. Update your DNS provider to point `hi.jbm.eco` to GitHub Pages (see [GitHub's custom domain docs](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site))
+
+---
+
 ## Project Structure
 
 ```

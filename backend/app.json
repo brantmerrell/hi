@@ -1,0 +1,53 @@
+{
+  "name": "Hi - Hindi Language Learning App",
+  "description": "Backend API for sentence-by-sentence Hindi text reading with audio, translations, and statistics",
+  "repository": "https://github.com/brantmerrell/hi",
+  "buildpacks": [
+    {
+      "url": "heroku/python"
+    }
+  ],
+  "addons": [
+    {
+      "plan": "heroku-postgresql:essential-0"
+    }
+  ],
+  "env": {
+    "SECRET_KEY": {
+      "description": "Django secret key for session management",
+      "generator": "secret"
+    },
+    "FRONTEND_URL": {
+      "description": "URL where the frontend is deployed (e.g., https://hi.jbm.eco)",
+      "value": "https://hi.jbm.eco"
+    },
+    "AWS_ACCESS_KEY_ID": {
+      "description": "AWS access key ID for SES email service",
+      "required": true
+    },
+    "AWS_SECRET_ACCESS_KEY": {
+      "description": "AWS secret access key for SES email service",
+      "required": true
+    },
+    "AWS_SES_REGION": {
+      "description": "AWS region for SES (e.g., us-east-1)",
+      "value": "us-east-1"
+    },
+    "FROM_EMAIL": {
+      "description": "Email address to send from (must be verified in SES)",
+      "required": true
+    },
+    "AZURE_TRANSLATOR_KEY": {
+      "description": "Azure Translator API key for sentence translation",
+      "required": true
+    },
+    "AZURE_TRANSLATOR_REGION": {
+      "description": "Azure Translator region (e.g., eastus)",
+      "value": "eastus"
+    },
+    "GOOGLE_CLOUD_API_KEY": {
+      "description": "Google Cloud API key for Text-to-Speech audio generation",
+      "required": true
+    }
+  }
+}
