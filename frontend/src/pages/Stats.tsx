@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import type { Story } from "../types";
 
 interface WordStat {
   surface_devanagari: string;
@@ -26,7 +25,6 @@ export default function Stats() {
   const [maxReviews, setMaxReviews] = useState(999999);
   const [appliedMinReviews, setAppliedMinReviews] = useState(0);
   const [appliedMaxReviews, setAppliedMaxReviews] = useState(999999);
-  const [story, setStory] = useState<Story | null>(null);
   const [offset, setOffset] = useState(0);
   const [summary, setSummary] = useState({ count: 0, mean: 0, min: 0, max: 0 });
   const LIMIT = 10;
@@ -57,19 +55,8 @@ export default function Stats() {
     async function load() {
       setIsFetching(true);
       try {
-        const storiesRes = await fetch("/api/stories");
-        if (!storiesRes.ok) throw new Error("Failed to fetch stories");
-        const storiesData: Story[] = await storiesRes.json();
-        if (storiesData.length === 0) {
-          setWords([]);
-          return;
-        }
-
-        const firstStory = storiesData[0];
-        setStory(firstStory);
-
         const wordsRes = await fetch(
-          `/api/stats/words/${firstStory.id}?limit=${LIMIT}&offset=${offset}&min_reviews=${appliedMinReviews}&max_reviews=${appliedMaxReviews}&sort_by=${sortColumn}&sort_order=${sortDirection}`,
+          `/api/stats/words?limit=${LIMIT}&offset=${offset}&min_reviews=${appliedMinReviews}&max_reviews=${appliedMaxReviews}&sort_by=${sortColumn}&sort_order=${sortDirection}`,
           {
             credentials: "include",
           }
@@ -323,16 +310,14 @@ export default function Stats() {
                             credentials: "include",
                           }).then(() => {
                             // Refresh stats to show updated count
-                            if (story) {
-                              fetch(`/api/stats/words/${story.id}?limit=${LIMIT}&offset=${offset}&min_reviews=${appliedMinReviews}&max_reviews=${appliedMaxReviews}&sort_by=${sortColumn}&sort_order=${sortDirection}`, { credentials: "include" })
-                                .then((r) => (r.ok ? r.json() : null))
-                                .then((data) => {
-                                  if (data) {
-                                    setWords(data.words || []);
-                                    setSummary(data.summary || { count: 0, mean: 0, min: 0, max: 0 });
-                                  }
-                                });
-                            }
+                            fetch(`/api/stats/words?limit=${LIMIT}&offset=${offset}&min_reviews=${appliedMinReviews}&max_reviews=${appliedMaxReviews}&sort_by=${sortColumn}&sort_order=${sortDirection}`, { credentials: "include" })
+                              .then((r) => (r.ok ? r.json() : null))
+                              .then((data) => {
+                                if (data) {
+                                  setWords(data.words || []);
+                                  setSummary(data.summary || { count: 0, mean: 0, min: 0, max: 0 });
+                                }
+                              });
                           });
                         }}
                         title="Play audio"

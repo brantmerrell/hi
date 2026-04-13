@@ -45,9 +45,8 @@ async def get_my_stats(
     )
 
 
-@router.get("/words/{story_id}")
+@router.get("/words")
 async def get_word_stats(
-    story_id: uuid.UUID,
     limit: int = 10,
     offset: int = 0,
     min_reviews: int = 0,
@@ -57,23 +56,19 @@ async def get_word_stats(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    """Return paginated play counts per unique surface form for a story."""
+    """Return paginated play counts per unique surface form across all stories for the user."""
 
-    # Build the base counts query with filtering
+    # Build the base counts query with filtering (no story filter - global stats)
     counts_query = select(
         SentenceWord.surface_devanagari,
         SentenceWord.surface_romanized,
         func.count(UserWordRead.id).label("play_count"),
-    ).join(Sentence, SentenceWord.sentence_id == Sentence.id).outerjoin(
+    ).outerjoin(
         UserWordRead,
         and_(
             UserWordRead.sentence_word_id == SentenceWord.id,
             UserWordRead.user_id == current_user.id,
         ),
-    ).where(
-        and_(
-            Sentence.story_id == story_id,
-        )
     ).group_by(
         SentenceWord.surface_devanagari,
         SentenceWord.surface_romanized,
