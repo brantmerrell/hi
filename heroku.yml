@@ -1,6 +1,0 @@
-buildpacks:
-  - url: https://github.com/heroku/heroku-buildpack-docker
-
-build:
-  docker:
-    web: Dockerfile
