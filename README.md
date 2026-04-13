@@ -1,6 +1,6 @@
 # Hindi Language Learning App
 
-A sentence-by-sentence reader of Hindi prose displaying each sentence in four simultaneous layers: Devanagari script, Roman transliteration, word-for-word gloss, and natural English translation. Includes audio playback, per-user bookmarks, and reading statistics.
+A sentence-by-sentence reader of Hindi text from Wikisource, displaying each sentence in four simultaneous layers: Devanagari script, Roman transliteration, word-for-word gloss, and English translation. Includes audio playback, per-user bookmarks, and reading statistics.
 
 See [PROJECT.md](./PROJECT.md) for full design rationale and architecture decisions.
 
@@ -14,61 +14,27 @@ See [PROJECT.md](./PROJECT.md) for full design rationale and architecture decisi
 
 ---
 
-## Accounts and Tokens
+## External Services
 
-Three external services are used. They have different scopes — not all are needed to run the app locally.
+Three services are used by the pipeline (one-time setup to populate the database):
 
-### Resend — required to run the app
-
-Used for magic link authentication emails.
-
-1. Sign up at [resend.com](https://resend.com)
-2. Create an API key (Dashboard → API Keys)
-3. Add a verified sending domain, or use Resend's onboarding domain for testing
-4. Free tier: 3,000 emails/month, 100/day — sufficient for personal + small shared use
-
-Environment variables provided:
+**Azure Translator** — translates sentences and produces word-level alignment. Sign up at [portal.azure.com](https://portal.azure.com), create a Translator resource, and configure:
 ```
-RESEND_API_KEY=re_...
-FROM_EMAIL=noreply@yourdomain.com
-```
-
----
-
-### Azure Translator — required for the pre-processing pipeline only
-
-Used to translate Hindi sentences to English and produce word-level alignment (which Hindi word maps to which English word). The app never calls this at runtime — it is used once per sentence during pre-processing, with results stored in the database.
-
-1. Sign up at [portal.azure.com](https://portal.azure.com)
-2. Create a resource → search "Translator"
-3. Select the **F0 free tier** (2M characters/month)
-4. After creation: go to the resource → Keys and Endpoint
-5. Copy Key 1 and the Region (e.g. `eastus`)
-
-The endpoint URL is standard and does not need to be configured:
-`https://api.cognitive.microsofttranslator.com`
-
-Environment variables provided:
-```
-AZURE_TRANSLATOR_KEY=...
+AZURE_TRANSLATOR_KEY=<key>
 AZURE_TRANSLATOR_REGION=eastus
 ```
 
----
-
-### Google Cloud Text-to-Speech — required for the pre-processing pipeline only
-
-Used to generate Hindi audio (MP3) for each sentence. Like Azure, this is a one-time pre-processing step — audio files are stored as static files and served directly. The app never calls this API at runtime.
-
-1. Sign up at [console.cloud.google.com](https://console.cloud.google.com)
-2. Create a project
-3. Enable the **Cloud Text-to-Speech API** (APIs & Services → Library)
-4. Create credentials: APIs & Services → Credentials → Create Credentials → API Key
-5. Free tier: 1M WaveNet characters/month (permanent, resets monthly)
-
-Environment variables provided:
+**Google Cloud Text-to-Speech** — generates Hindi pronunciation audio. Sign up at [console.cloud.google.com](https://console.cloud.google.com), enable the Cloud Text-to-Speech API, and configure:
 ```
-GOOGLE_CLOUD_API_KEY=...
+GOOGLE_CLOUD_API_KEY=<key>
+```
+
+**AWS SES** — sends magic link authentication emails. Create an AWS account, configure SES, and set:
+```
+AWS_ACCESS_KEY_ID=<key>
+AWS_SECRET_ACCESS_KEY=<secret>
+AWS_SES_REGION=us-east-1
+FROM_EMAIL=noreply@yourdomain.com
 ```
 
 ---
@@ -83,57 +49,49 @@ docker compose up -d
 
 ### 2. Backend
 
+From the `backend` directory:
+
 ```bash
-cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
-# Edit .env — at minimum set SECRET_KEY and RESEND_API_KEY
-alembic revision --autogenerate -m "initial"
+# Edit .env — set SECRET_KEY and AWS SES credentials at minimum
 alembic upgrade head
-uvicorn app.main:app --reload
+python -m uvicorn app.main:app --reload
 ```
 
-API runs at http://localhost:8000. Health check: http://localhost:8000/health
+API runs at http://localhost:8000
 
 ### 3. Frontend
 
+From the `frontend` directory:
+
 ```bash
-cd frontend
 npm install
 npm run dev
 ```
 
-App runs at http://localhost:5173.
+App runs at http://localhost:5173
 
 ### 4. Pipeline (loading text content)
 
-The pipeline is run once per story to populate the database. All three steps require the backend `.venv` to be active and `backend/.env` to be configured.
+From the `pipeline` directory with the backend `.venv` active:
 
 ```bash
-cd pipeline
-
-# Step 1 — fetch raw text from Hindi Wikisource
+# Step 1 — fetch raw text from Wikisource
 python fetch_text.py "सप्तसरोज/नमक का दारोगा"
-# prints the slug, e.g. story-938-92a-94d-924
 
-# Step 2 — segment, translate, and insert sentences + word alignment
+# Step 2 — segment, translate, insert sentences
 python process_sentences.py <slug>
 
-# Step 3 — enrich each word with a dictionary-level gloss
+# Step 3 — enrich each word with dictionary-level gloss
 python enrich_glosses.py
 
-# Step 4 — generate Hindi pronunciation MP3s via Google Cloud TTS
+# Step 4 — generate and store audio
 python generate_audio.py
 ```
 
-**Why four steps?**
-
-`process_sentences.py` translates full sentences and uses Azure's word-alignment to map Hindi words to fragments of the English translation. This is the *contextual* gloss — useful but incomplete. Idiomatic expressions (e.g. चोरी छिपे → "secretly") produce empty glosses for the individual words because their meaning was absorbed into the sentence translation.
-
-`enrich_glosses.py` translates each unique word form individually, producing a *dictionary-level* gloss ("theft", "hidden"). The word-for-word display layer uses this. The sentence-level English translation remains the contextual one from Step 2.
-
-`generate_audio.py` calls Google Cloud TTS (voice: hi-IN-Wavenet-D) for each sentence, saves MP3s to `data/audio/<story_id>/<seq>.mp3`, and writes the relative path to `sentences.audio_path`. Audio files are served as static files by FastAPI at `/audio/`.
+Steps 2–4 produce sentence-level English translations, word-level alignments, dictionary definitions, and audio files. Frontend corrections and additions are not yet implemented.
 
 ---
 

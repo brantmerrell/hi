@@ -24,10 +24,10 @@ A sentence-by-sentence reader of Hindi prose that displays each sentence in four
 | Audio playback of Hindi pronunciation | Done |
 | Toggle word-level translation view | Done |
 | Magic link email authentication | Done |
-| User bookmarks (persistent across devices) | Next |
-| Reading statistics (unique words, repetitions, gender breakdown) | Planned |
-| Pre-processing pipeline (text → DB) | Planned |
-| Custom sending domain for SES (jbm.eco) | Planned |
+| User bookmarks (persistent across devices) | Done |
+| Reading statistics (word frequency, review counts) | Done |
+| Pre-processing pipeline (text → DB) | Done |
+| Custom sending domain for SES | Planned |
 
 ---
 
@@ -41,13 +41,7 @@ Layers 1 and 2 together address the script barrier. Devanagari is a phonetically
 
 ## Text Sources
 
-The app is not limited to a single author or text. The pipeline is designed to accept any Hindi prose that can be segmented into sentences. Texts are selected and added incrementally based on vocabulary goals, public domain status, and digital availability.
-
-We originally considered beginning with the Mahabharat, but its Hindi translations reportedly use elevated, Sanskritized vocabulary not pragmatic to modern, conversational Hindi. It will likely be the first choice in an analogous Sanskrit-learning app at some point.
-
-We then considered beginning with epic Hindi poetry such as Ramcharitmanas, Padmavat, and Kamayani. This bore the risk of constrained vocabulary or more obscure Hindi dialects such as Awadhi. These texts remain candidates for a literary reading mode but are not appropriate as a primary vocabulary-building source.
-
-We begin with the works of Munshi Premchand as he writes in Khari Boli, which is reasonably modern and standardized Hindi. The vocabulary is reportedly conversational in register, Hindustani in character (using the natural blend of Sanskrit-derived and Urdu/Persian-derived words that actual Hindi speakers use), and varied across hundreds of short stories. His short stories are available on Hindi Wikisource and the Internet Archive.
+Texts are fetched from Hindi Wikisource and the Internet Archive — works in the public domain that are already digitized. The pipeline accepts any Hindi text that can be segmented into sentences and processes it incrementally.
 
 ---
 
@@ -153,11 +147,11 @@ This distinction matters for the schema. The `gender` field on `lemmas` records 
 
 | Component | Technology | Rationale |
 |---|---|---|
-| Frontend | React + TypeScript | Developer has years of React experience; React's ecosystem matches all UI requirements |
-| Backend API | Python + FastAPI | Same language as the NLP pre-processing pipeline; no context switch |
+| Frontend | React + TypeScript | React's ecosystem matches all UI requirements |
+| Backend API | Python + FastAPI | Same language as the NLP pre-processing pipeline |
 | Pre-processing pipeline | Python (separate scripts, same repo) | IndicTrans2, Aksharamukha, Indic NLP Library are all Python |
-| Database | PostgreSQL | Statistical query requirements justify relational database over SQLite; concurrent multi-user reads are safe |
-| Email / Auth | Resend API (magic link) | Simple email-only auth; no passwords; persistent across devices and cookie clears |
+| Database | PostgreSQL | Statistical query requirements justify relational database; concurrent multi-user reads are safe |
+| Email / Auth | AWS SES (magic link) | Simple email-only auth; no passwords; persistent across devices and cookie clears |
 | Audio | Pre-generated MP3 static files | Named by sentence ID; served directly; no runtime API calls |
 
 **On Rust**: Rust was considered for the frontend (Yew, Leptos) on the basis that it "works well with AI development." This is true of Rust on the backend or for ML inference tooling, but Rust frontend frameworks are immature relative to React, compile to WebAssembly, and have a small ecosystem. Given the developer's existing React proficiency and the project's UI complexity, Rust frontend would cost more than it returns. The correct use of the developer's time is React.
