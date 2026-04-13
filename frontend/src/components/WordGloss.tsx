@@ -1,4 +1,5 @@
 import type { SentenceWord } from "../types";
+import { apiUrl } from "../api";
 
 interface Props {
   words: SentenceWord[];
@@ -7,7 +8,7 @@ interface Props {
 function playWordAudio(path: string, wordId: string | null) {
   new Audio(`/audio/${path}`).play();
   if (wordId) {
-    fetch(`/api/sentences/words/${wordId}/played`, {
+    fetch(apiUrl(`/api/sentences/words/${wordId}/played`), {
       method: "POST",
       credentials: "include",
     });

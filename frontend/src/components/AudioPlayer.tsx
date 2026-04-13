@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { apiUrl } from "../api";
 
 interface Props {
   audioPath: string | null;
@@ -13,7 +14,7 @@ export default function AudioPlayer({ audioPath, sentenceId }: Props) {
 
   function handlePlay() {
     if (!sentenceId) return;
-    fetch(`/api/sentences/${sentenceId}/played`, {
+    fetch(apiUrl(`/api/sentences/${sentenceId}/played`), {
       method: "POST",
       credentials: "include",
     });

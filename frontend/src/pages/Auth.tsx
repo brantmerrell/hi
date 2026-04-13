@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { apiUrl } from "../api";
 
 export default function Auth() {
   const [email, setEmail] = useState("");
@@ -16,7 +17,7 @@ export default function Auth() {
     if (!token) return;
 
     setBusy(true);
-    fetch(`/api/auth/verify?token=${encodeURIComponent(token)}`, {
+    fetch(apiUrl(`/api/auth/verify?token=${encodeURIComponent(token)}`), {
       credentials: "include",
     })
       .then(async (r) => {
@@ -25,7 +26,7 @@ export default function Auth() {
           throw new Error(body.detail ?? "Verification failed");
         }
         // Re-fetch the session so AuthContext is populated before redirect.
-        return fetch("/api/auth/me", { credentials: "include" });
+        return fetch(apiUrl("/api/auth/me"), { credentials: "include" });
       })
       .then(async (r) => {
         if (r.ok) setUser(await r.json());
@@ -42,7 +43,7 @@ export default function Auth() {
     setBusy(true);
     setMessage("");
     try {
-      const r = await fetch("/api/auth/request", {
+      const r = await fetch(apiUrl("/api/auth/request"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),

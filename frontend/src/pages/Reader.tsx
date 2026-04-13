@@ -5,6 +5,7 @@ import Navigation from "../components/Navigation";
 import SentenceView from "../components/SentenceView";
 import WordGloss from "../components/WordGloss";
 import { useAuth } from "../context/AuthContext";
+import { apiUrl } from "../api";
 import type { Sentence, Story } from "../types";
 
 export default function Reader() {
@@ -23,7 +24,7 @@ export default function Reader() {
   useEffect(() => {
     async function load() {
       try {
-        const storiesRes = await fetch("/api/stories");
+        const storiesRes = await fetch(apiUrl("/api/stories"));
         if (!storiesRes.ok) throw new Error("Failed to fetch stories");
         const storiesData: Story[] = await storiesRes.json();
         setStories(storiesData);
@@ -36,14 +37,14 @@ export default function Reader() {
 
         const story = storiesData[0];
         const sentencesRes = await fetch(
-          `/api/stories/${story.id}/sentences?limit=500`
+          apiUrl(`/api/stories/${story.id}/sentences?limit=500`)
         );
         if (!sentencesRes.ok) throw new Error("Failed to fetch sentences");
         const sentencesData: Sentence[] = await sentencesRes.json();
         setSentences(sentencesData);
 
         // Load bookmark if signed in
-        const bmRes = await fetch(`/api/bookmarks/${story.id}`, {
+        const bmRes = await fetch(apiUrl(`/api/bookmarks/${story.id}`), {
           credentials: "include",
         });
         if (bmRes.ok) {
@@ -73,7 +74,7 @@ export default function Reader() {
     const sentence = sentences[index];
     if (!user || !story || !sentence) return;
 
-    fetch(`/api/bookmarks/${story.id}`, {
+    fetch(apiUrl(`/api/bookmarks/${story.id}`), {
       method: "PUT",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
@@ -100,7 +101,7 @@ export default function Reader() {
             {" · "}
             <button
               onClick={() =>
-                fetch("/api/auth/logout", { method: "POST", credentials: "include" })
+                fetch(apiUrl("/api/auth/logout"), { method: "POST", credentials: "include" })
                   .then(() => setUser(null))
               }
               style={{ background: "none", border: "none", cursor: "pointer", color: "#888", fontSize: "0.8rem", padding: 0 }}

@@ -1,4 +1,5 @@
 import type { Sentence } from "../types";
+import { apiUrl } from "../api";
 
 interface Props {
   sentence: Sentence;
@@ -19,7 +20,7 @@ const label: React.CSSProperties = {
 function playWordAudio(path: string, wordId: string | null) {
   new Audio(`/audio/${path}`).play();
   if (wordId) {
-    fetch(`/api/sentences/words/${wordId}/played`, {
+    fetch(apiUrl(`/api/sentences/words/${wordId}/played`), {
       method: "POST",
       credentials: "include",
     });

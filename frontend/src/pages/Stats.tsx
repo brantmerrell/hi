@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { apiUrl } from "../api";
 
 interface WordStat {
   surface_devanagari: string;
@@ -56,7 +57,7 @@ export default function Stats() {
       setIsFetching(true);
       try {
         const wordsRes = await fetch(
-          `/api/stats/words?limit=${LIMIT}&offset=${offset}&min_reviews=${appliedMinReviews}&max_reviews=${appliedMaxReviews}&sort_by=${sortColumn}&sort_order=${sortDirection}`,
+          apiUrl(`/api/stats/words?limit=${LIMIT}&offset=${offset}&min_reviews=${appliedMinReviews}&max_reviews=${appliedMaxReviews}&sort_by=${sortColumn}&sort_order=${sortDirection}`),
           {
             credentials: "include",
           }
@@ -305,12 +306,12 @@ export default function Stats() {
                       <button
                         onClick={() => {
                           new Audio(`/audio/${word.word_audio_path}`).play();
-                          fetch(`/api/sentences/words/${word.sentence_word_id}/played`, {
+                          fetch(apiUrl(`/api/sentences/words/${word.sentence_word_id}/played`), {
                             method: "POST",
                             credentials: "include",
                           }).then(() => {
                             // Refresh stats to show updated count
-                            fetch(`/api/stats/words?limit=${LIMIT}&offset=${offset}&min_reviews=${appliedMinReviews}&max_reviews=${appliedMaxReviews}&sort_by=${sortColumn}&sort_order=${sortDirection}`, { credentials: "include" })
+                            fetch(apiUrl(`/api/stats/words?limit=${LIMIT}&offset=${offset}&min_reviews=${appliedMinReviews}&max_reviews=${appliedMaxReviews}&sort_by=${sortColumn}&sort_order=${sortDirection}`), { credentials: "include" })
                               .then((r) => (r.ok ? r.json() : null))
                               .then((data) => {
                                 if (data) {

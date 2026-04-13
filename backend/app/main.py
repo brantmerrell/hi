@@ -29,11 +29,11 @@ app.add_middleware(
 )
 
 # ── Routers ───────────────────────────────────────────────────────────────────
-app.include_router(auth.router, prefix="/auth", tags=["auth"])
-app.include_router(stories.router, prefix="/stories", tags=["stories"])
-app.include_router(sentences.router, prefix="/sentences", tags=["sentences"])
-app.include_router(bookmark.router, prefix="/bookmarks", tags=["bookmarks"])
-app.include_router(stats.router, prefix="/stats", tags=["stats"])
+app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+app.include_router(stories.router, prefix="/api/stories", tags=["stories"])
+app.include_router(sentences.router, prefix="/api/sentences", tags=["sentences"])
+app.include_router(bookmark.router, prefix="/api/bookmarks", tags=["bookmarks"])
+app.include_router(stats.router, prefix="/api/stats", tags=["stats"])
 
 
 # ── Static files ─────────────────────────────────────────────────────────────

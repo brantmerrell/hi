@@ -6,6 +6,7 @@ import {
   type ReactNode,
 } from "react";
 import type { User } from "../types";
+import { apiUrl } from "../api";
 
 interface AuthContextValue {
   user: User | null;
@@ -24,7 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/auth/me", { credentials: "include" })
+    fetch(apiUrl("/api/auth/me"), { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => setUser(data ?? null))
       .catch(() => setUser(null))

@@ -95,26 +95,31 @@ async def request_magic_link(
     await db.flush()
 
     # Send email via AWS SES
-    aws_region = os.environ.get("AWS_REGION", "us-east-2")
-    link_url = f"{FRONTEND_URL}/auth?token={token}"
-    ses = boto3.client("ses", region_name=aws_region)
-    ses.send_email(
-        Source=FROM_EMAIL,
-        Destination={"ToAddresses": [email]},
-        Message={
-            "Subject": {"Data": "Your Hindi App login link"},
-            "Body": {
-                "Html": {
-                    "Data": (
-                        f"<p>Click the link below to log in. It expires in "
-                        f"{MAGIC_LINK_EXPIRE_MINUTES} minutes.</p>"
-                        f'<p><a href="{link_url}">{link_url}</a></p>'
-                    )
+    try:
+        aws_region = os.environ.get("AWS_SES_REGION", "us-east-1")
+        link_url = f"{FRONTEND_URL}/auth?token={token}"
+        ses = boto3.client("ses", region_name=aws_region)
+        ses.send_email(
+            Source=FROM_EMAIL,
+            Destination={"ToAddresses": [email]},
+            Message={
+                "Subject": {"Data": "Your Hindi App login link"},
+                "Body": {
+                    "Html": {
+                        "Data": (
+                            f"<p>Click the link below to log in. It expires in "
+                            f"{MAGIC_LINK_EXPIRE_MINUTES} minutes.</p>"
+                            f'<p><a href="{link_url}">{link_url}</a></p>'
+                        )
+                    }
                 }
             },
-        },
-    )
+        )
+    except Exception as e:
+        # For local development, just log the error and continue
+        print(f"Failed to send email: {e}")
 
+    await db.commit()
     return {"message": "check your email"}
 
 
