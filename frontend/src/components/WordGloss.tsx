@@ -1,4 +1,3 @@
-import { useAuth } from "../context/AuthContext";
 import type { SentenceWord } from "../types";
 
 interface Props {
