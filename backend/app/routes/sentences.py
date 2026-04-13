@@ -15,7 +15,7 @@ router = APIRouter()
 
 
 @router.post("/{sentence_id}/played")
-async def record_played(
+async def record_sentence_played(
     sentence_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

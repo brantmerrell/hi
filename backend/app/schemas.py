@@ -78,6 +78,8 @@ class BookmarkOut(BaseModel):
 # ── Statistics ────────────────────────────────────────────────────────────────
 
 class WordStatOut(BaseModel):
+    """Individual word statistics for display in a word list."""
+
     surface_devanagari: str
     surface_romanized: str
     english_gloss: str
@@ -87,5 +89,7 @@ class WordStatOut(BaseModel):
 
 
 class StatsOut(BaseModel):
+    """Overall reading statistics for the current user across all stories."""
+
     unique_surface_forms_read: int
     unique_lemmas_read: int

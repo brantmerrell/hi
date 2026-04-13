@@ -37,6 +37,10 @@ Hindi and English have fundamentally different grammars (Hindi is SOV; English i
 
 Layers 1 and 2 together address the script barrier. Devanagari is a phonetically consistent script (unlike English orthography), so a learner who can read the romanization can produce correct pronunciation even before memorizing the script.
 
+### Note on Terminology
+
+Layer 3 is called a "gloss" — a standard linguistic term for word-by-word translation that preserves the source language's word order and structure. See [Gloss (linguistics)](https://en.wikipedia.org/wiki/Gloss_(linguistics)) on Wikipedia.
+
 ---
 
 ## Text Sources
