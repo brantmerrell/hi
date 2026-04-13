@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# Virtual environments — any name inside backend/
+backend/%%/
+backend/source/
+.venv/
+venv/
+
+# Environment files
+.env
+
+# Frontend build
+node_modules/
+dist/
+
+# Database volume
+pgdata/
+
+# Pipeline data (fetched text and generated audio)
+data/raw/
+data/audio/
+
+# Editor
+.DS_Store
+*.swp
+*.swo
