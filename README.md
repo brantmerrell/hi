@@ -100,25 +100,24 @@ Steps 2–4 produce sentence-level English translations, word-level alignments, 
 ### Backend (Heroku)
 
 ```bash
-# Create Heroku app with config from app.json (first time only)
+# Create Heroku app (first time only)
 heroku create hi-api
 
-# This automatically provisions:
-# - Python buildpack
-# - PostgreSQL database (essential-0 plan)
-# - Environment variables defined in backend/app.json
+# Add PostgreSQL database
+heroku addons:create heroku-postgresql:essential-0 -a hi-api
 
-# Configure required environment variables from your .env
+# Configure environment variables from your .env
 heroku config:set AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -a hi-api
 heroku config:set AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY -a hi-api
 heroku config:set FROM_EMAIL=$FROM_EMAIL -a hi-api
 heroku config:set AZURE_TRANSLATOR_KEY=$AZURE_TRANSLATOR_KEY -a hi-api
 heroku config:set GOOGLE_CLOUD_API_KEY=$GOOGLE_CLOUD_API_KEY -a hi-api
-heroku buildpacks:set heroku/docker -a hi-api
-
 
 # Deploy
 git push heroku main
+
+# Run database migrations
+heroku run "cd backend && alembic upgrade head" -a hi-api
 
 # Set custom domain
 heroku domains:add hi-api.jbm.eco -a hi-api
