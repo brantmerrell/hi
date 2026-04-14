@@ -16,6 +16,7 @@ venv/
 # Frontend build
 node_modules/
 dist/
+.vite/
 
 # Database volume
 pgdata/
@@ -28,3 +29,4 @@ data/audio/
 .DS_Store
 *.swp
 *.swo
+.claude/
