@@ -112,6 +112,7 @@ heroku config:set AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY -a hi-api
 heroku config:set FROM_EMAIL=$FROM_EMAIL -a hi-api
 heroku config:set AZURE_TRANSLATOR_KEY=$AZURE_TRANSLATOR_KEY -a hi-api
 heroku config:set GOOGLE_CLOUD_API_KEY=$GOOGLE_CLOUD_API_KEY -a hi-api
+heroku config:set FRONTEND_URL=https://hi.jbm.eco -a hi-api
 
 # Deploy
 git push heroku main
@@ -119,11 +120,20 @@ git push heroku main
 # Run database migrations
 heroku run "cd backend && alembic upgrade head" -a hi-api
 
+# Enable automatic SSL certificate management
+heroku certs:auto:enable -a hi-api
+
 # Set custom domain
 heroku domains:add hi-api.jbm.eco -a hi-api
 ```
 
-Update your DNS provider to point `hi-api.jbm.eco` to the Heroku app's DNS target.
+Update your DNS provider to point `hi-api.jbm.eco` to the DNS target shown by `heroku domains -a hi-api`.
+
+To migrate data from a local Docker-based PostgreSQL to Heroku:
+
+```bash
+docker exec hi-db-1 pg_dump -U postgres hindi_app | psql $(heroku config:get DATABASE_URL -a hi-api)
+```
 
 ### Frontend (GitHub Pages)
 
@@ -132,9 +142,9 @@ The frontend automatically deploys via GitHub Actions when you push to `main`. T
 2. Deploys the `frontend/dist` directory to GitHub Pages
 
 To set up the custom domain for GitHub Pages:
-1. Go to repository Settings → Pages
+1. Go to repository Settings → Pages → Source → **GitHub Actions** (not "Deploy from a branch")
 2. Set Custom domain to `hi.jbm.eco`
-3. Update your DNS provider to point `hi.jbm.eco` to GitHub Pages (see [GitHub's custom domain docs](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site))
+3. Update your DNS provider to point `hi.jbm.eco` to GitHub Pages (CNAME to `brantmerrell.github.io`)
 
 ---
 
