@@ -6,7 +6,7 @@ interface Props {
 }
 
 function playWordAudio(path: string, wordId: string | null) {
-  new Audio(`/audio/${path}`).play();
+  new Audio(apiUrl(`/audio/${path}`)).play();
   if (wordId) {
     fetch(apiUrl(`/api/sentences/words/${wordId}/played`), {
       method: "POST",

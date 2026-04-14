@@ -305,7 +305,7 @@ export default function Stats() {
                     {word.word_audio_path && word.sentence_word_id && (
                       <button
                         onClick={() => {
-                          new Audio(`/audio/${word.word_audio_path}`).play();
+                          new Audio(apiUrl(`/audio/${word.word_audio_path}`)).play();
                           fetch(apiUrl(`/api/sentences/words/${word.sentence_word_id}/played`), {
                             method: "POST",
                             credentials: "include",

@@ -32,7 +32,7 @@ export default function AudioPlayer({ audioPath, sentenceId }: Props) {
       <audio
         ref={audioRef}
         controls
-        src={`/audio/${audioPath}`}
+        src={apiUrl(`/audio/${audioPath}`)}
         style={{ width: "100%" }}
         onPlay={handlePlay}
         onLoadedMetadata={() => {

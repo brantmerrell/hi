@@ -113,6 +113,7 @@ heroku config:set FROM_EMAIL=$FROM_EMAIL -a hi-api
 heroku config:set AZURE_TRANSLATOR_KEY=$AZURE_TRANSLATOR_KEY -a hi-api
 heroku config:set GOOGLE_CLOUD_API_KEY=$GOOGLE_CLOUD_API_KEY -a hi-api
 heroku config:set FRONTEND_URL=https://hi.jbm.eco -a hi-api
+heroku config:set FROM_EMAIL=$FROM_EMAIL -a hi-api
 
 # Deploy
 git push heroku main
