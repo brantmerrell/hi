@@ -5,8 +5,9 @@ from dotenv import load_dotenv
 
 load_dotenv(override=True)
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.routes import auth, bookmark, sentences, stats, stories
@@ -36,10 +37,20 @@ app.include_router(bookmark.router, prefix="/api/bookmarks", tags=["bookmarks"])
 app.include_router(stats.router, prefix="/api/stats", tags=["stats"])
 
 
-# ── Static files ─────────────────────────────────────────────────────────────
+# ── Audio serving ─────────────────────────────────────────────────────────────
 _audio_dir = Path(__file__).parent.parent.parent / "data" / "audio"
 _audio_dir.mkdir(parents=True, exist_ok=True)
-app.mount("/audio", StaticFiles(directory=str(_audio_dir)), name="audio")
+_audio_s3_url = os.environ.get("AUDIO_S3_URL")  # e.g. https://hi-audio-jbm.s3.amazonaws.com
+
+
+@app.get("/audio/{path:path}")
+async def serve_audio(path: str):
+    local_file = _audio_dir / path
+    if local_file.exists():
+        return FileResponse(str(local_file), media_type="audio/mpeg")
+    if _audio_s3_url:
+        return RedirectResponse(f"{_audio_s3_url}/{path}")
+    raise HTTPException(status_code=404, detail="Audio file not found")
 
 
 # ── Health check ──────────────────────────────────────────────────────────────
