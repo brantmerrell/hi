@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
     "postgresql+asyncpg://postgres:postgres@localhost:5432/hindi_app",
-)
+).replace("postgres://", "postgresql+asyncpg://", 1)
 
 engine = create_async_engine(
     DATABASE_URL,
