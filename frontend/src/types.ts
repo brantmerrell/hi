@@ -18,7 +18,7 @@ export interface Sentence {
   romanized: string;
   english: string;
   audio_path: string | null;
-  words: SentenceWord[];
+  words: SentenceWord[] | undefined;
 }
 
 export interface Story {

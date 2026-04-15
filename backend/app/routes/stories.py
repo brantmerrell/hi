@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models import Sentence, Story
-from app.schemas import SentenceOut, StoryOut
+from app.schemas import SentenceListOut, StoryOut
 
 router = APIRouter()
 
@@ -19,7 +19,7 @@ async def list_stories(db: AsyncSession = Depends(get_db)) -> list[Story]:
     return list(result.scalars().all())
 
 
-@router.get("/{story_id}/sentences", response_model=list[SentenceOut])
+@router.get("/{story_id}/sentences", response_model=list[SentenceListOut])
 async def list_story_sentences(
     story_id: uuid.UUID,
     limit: Annotated[int, Query(ge=1, le=500)] = 50,

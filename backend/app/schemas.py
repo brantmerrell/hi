@@ -23,7 +23,21 @@ class SentenceWordOut(BaseModel):
 
 # ── Sentence-level ────────────────────────────────────────────────────────────
 
+class SentenceListOut(BaseModel):
+    """Sentence without word data — used in list endpoints."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    story_id: uuid.UUID
+    sequence_num: int
+    devanagari: str
+    romanized: str
+    english: str
+    audio_path: Optional[str] = None
+
+
 class SentenceOut(BaseModel):
+    """Sentence with full word alignment data — used in single-sentence endpoint."""
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
