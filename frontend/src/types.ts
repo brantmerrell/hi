@@ -5,6 +5,8 @@ export interface SentenceWord {
   surface_romanized: string;
   english_gloss: string;
   word_sense_definition: string | null;
+  word_sense_id: string | null;
+  note: string | null;
   word_audio_path: string | null;
 }
 
@@ -21,8 +23,8 @@ export interface Sentence {
 
 export interface Story {
   id: string;
-  title: string;
   title_hi: string;
+  title_en: string | null;
   author: string;
 }
 

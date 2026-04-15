@@ -7,9 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
-from app.models import Sentence, SentenceWord, User, UserWordRead
+from app.models import Sentence, SentenceWord, User, UserWordRead, WordSense, WordSenseNote
 from app.routes.auth import get_current_user
-from app.schemas import SentenceOut
+from app.schemas import SentenceOut, WordSenseNoteIn
 
 router = APIRouter()
 
@@ -51,6 +51,28 @@ async def record_word_played(
     return {"logged": 1}
 
 
+@router.put("/words/senses/{word_sense_id}/note")
+async def set_word_sense_note(
+    word_sense_id: uuid.UUID,
+    body: WordSenseNoteIn,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Create or replace the display-gloss note for a word sense."""
+    word_sense = await db.get(WordSense, word_sense_id)
+    if word_sense is None:
+        raise HTTPException(status_code=404, detail="Word sense not found")
+
+    existing = await db.get(WordSenseNote, word_sense_id)
+    if existing is None:
+        db.add(WordSenseNote(word_sense_id=word_sense_id, display_gloss=body.display_gloss))
+    else:
+        existing.display_gloss = body.display_gloss
+
+    await db.commit()
+    return {"word_sense_id": str(word_sense_id), "display_gloss": body.display_gloss}
+
+
 @router.get("/{sentence_id}", response_model=SentenceOut)
 async def get_sentence(
     sentence_id: uuid.UUID,
@@ -60,7 +82,11 @@ async def get_sentence(
     result = await db.execute(
         select(Sentence)
         .where(Sentence.id == sentence_id)
-        .options(selectinload(Sentence.words).selectinload(SentenceWord.word_sense))
+        .options(
+            selectinload(Sentence.words)
+            .selectinload(SentenceWord.word_sense)
+            .selectinload(WordSense.note)
+        )
     )
     sentence = result.scalar_one_or_none()
     if sentence is None:

@@ -117,6 +117,11 @@ export default function Reader() {
       {story && (
         <header style={{ marginBottom: "1.5rem" }}>
           <h1 style={{ margin: 0 }}>{story.title_hi}</h1>
+          {story.title_en && (
+            <p style={{ margin: "0.1rem 0 0", color: "#ccc", fontSize: "1rem" }}>
+              {story.title_en}
+            </p>
+          )}
           <p style={{ margin: "0.25rem 0 0", color: "#888", fontSize: "0.9rem" }}>
             {story.author} · sentence {index + 1} of {sentences.length}
           </p>

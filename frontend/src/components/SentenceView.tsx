@@ -1,5 +1,6 @@
 import type { Sentence } from "../types";
 import { apiUrl } from "../api";
+import GlossCell from "./GlossCell";
 
 interface Props {
   sentence: Sentence;
@@ -42,7 +43,12 @@ export default function SentenceView({ sentence }: Props) {
                 {w.surface_romanized}
               </div>
               <div style={{ fontSize: "0.75rem", color: "#777" }}>
-                {w.word_sense_definition ?? w.english_gloss ?? "—"}
+                <GlossCell
+                  word_sense_id={w.word_sense_id}
+                  word_sense_definition={w.word_sense_definition}
+                  english_gloss={w.english_gloss}
+                  note={w.note}
+                />
               </div>
               {w.word_audio_path && (
                 <button

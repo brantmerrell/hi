@@ -16,6 +16,8 @@ class SentenceWordOut(BaseModel):
     surface_romanized: str
     english_gloss: str
     word_sense_definition: Optional[str] = None
+    word_sense_id: Optional[uuid.UUID] = None
+    note: Optional[str] = None
     word_audio_path: Optional[str] = None
 
 
@@ -40,9 +42,15 @@ class StoryOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
-    title: str
     title_hi: str
+    title_en: Optional[str] = None
     author: str
+
+
+# ── Notes ─────────────────────────────────────────────────────────────────────
+
+class WordSenseNoteIn(BaseModel):
+    display_gloss: str
 
 
 # ── User / Auth ───────────────────────────────────────────────────────────────
@@ -83,6 +91,9 @@ class WordStatOut(BaseModel):
     surface_devanagari: str
     surface_romanized: str
     english_gloss: str
+    word_sense_definition: Optional[str] = None
+    note: Optional[str] = None
+    word_sense_id: Optional[str] = None
     play_count: int
     word_audio_path: str | None = None
     sentence_word_id: str | None = None

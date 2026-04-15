@@ -1,5 +1,6 @@
 import type { SentenceWord } from "../types";
 import { apiUrl } from "../api";
+import GlossCell from "./GlossCell";
 
 interface Props {
   words: SentenceWord[];
@@ -43,7 +44,12 @@ export default function WordGloss({ words }: Props) {
               {word.surface_romanized}
             </td>
             <td style={{ padding: "0.3rem 0.75rem", color: "#aaa" }}>
-              {word.word_sense_definition ?? word.english_gloss ?? "—"}
+              <GlossCell
+                word_sense_id={word.word_sense_id}
+                word_sense_definition={word.word_sense_definition}
+                english_gloss={word.english_gloss}
+                note={word.note}
+              />
             </td>
             <td style={{ padding: "0.3rem 0 0.3rem 0.75rem" }}>
               {word.word_audio_path && (

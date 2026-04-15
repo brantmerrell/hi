@@ -26,8 +26,8 @@ class Story(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    title: Mapped[str] = mapped_column(String, nullable=False)
     title_hi: Mapped[str] = mapped_column(String, nullable=False)
+    title_en: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     author: Mapped[str] = mapped_column(String, nullable=False)
     source_url: Mapped[str] = mapped_column(String, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -96,6 +96,7 @@ class WordSense(Base):
     usage_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     lemma: Mapped["Lemma"] = relationship("Lemma", back_populates="senses")
+    note: Mapped[Optional["WordSenseNote"]] = relationship("WordSenseNote", back_populates="word_sense", uselist=False)
     sentence_words: Mapped[list["SentenceWord"]] = relationship(
         "SentenceWord", back_populates="word_sense"
     )
@@ -133,13 +134,14 @@ class SentenceWord(Base):
 
     @property
     def word_sense_definition(self) -> Optional[str]:
-        """Dictionary-level English definition for this word form.
-
-        Populated by the enrich_glosses pipeline step. Distinct from english_gloss,
-        which is a fragment of the sentence-level translation via Azure alignment.
-        """
         if self.word_sense is not None:
             return self.word_sense.english_definition
+        return None
+
+    @property
+    def note(self) -> Optional[str]:
+        if self.word_sense is not None and self.word_sense.note is not None:
+            return self.word_sense.note.display_gloss
         return None
 
 
@@ -199,6 +201,20 @@ class Bookmark(Base):
     user: Mapped["User"] = relationship("User", back_populates="bookmarks")
     story: Mapped["Story"] = relationship("Story", back_populates="bookmarks")
     sentence: Mapped["Sentence"] = relationship("Sentence", back_populates="bookmarks")
+
+
+class WordSenseNote(Base):
+    __tablename__ = "word_sense_notes"
+
+    word_sense_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("word_senses.id"), primary_key=True
+    )
+    display_gloss: Mapped[str] = mapped_column(Text, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    word_sense: Mapped["WordSense"] = relationship("WordSense", back_populates="note")
 
 
 class UserWordRead(Base):

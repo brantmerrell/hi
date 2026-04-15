@@ -2,17 +2,21 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { apiUrl } from "../api";
+import GlossCell from "../components/GlossCell";
 
 interface WordStat {
   surface_devanagari: string;
   surface_romanized: string;
   english_gloss: string;
+  word_sense_definition: string | null;
+  note: string | null;
+  word_sense_id: string | null;
   play_count: number;
   word_audio_path: string | null;
   sentence_word_id: string | null;
 }
 
-type SortColumn = "devanagari" | "romanized" | "english" | "count";
+type SortColumn = "devanagari" | "romanized" | "english" | "override" | "count";
 type SortDirection = "asc" | "desc";
 
 export default function Stats() {
@@ -79,7 +83,7 @@ export default function Stats() {
 
 
   return (
-    <main style={{ maxWidth: 720, margin: "0 auto", padding: "2rem 1rem" }}>
+    <main style={{ maxWidth: 1000, margin: "0 auto", padding: "2rem 1rem" }}>
       <div style={{ textAlign: "right", fontSize: "0.8rem", color: "#888", marginBottom: "0.5rem" }}>
         {user ? (
           <>
@@ -208,16 +212,27 @@ export default function Stats() {
             </button>
           </div>
 
+          <div style={{ overflowX: "auto" }}>
           <table
             style={{
               width: "100%",
+              minWidth: 640,
               borderCollapse: "collapse",
               fontSize: "0.9rem",
+              tableLayout: "fixed",
             }}
           >
+            <colgroup>
+              <col style={{ width: "12%" }} />
+              <col style={{ width: "12%" }} />
+              <col style={{ width: "30%" }} />
+              <col style={{ width: "28%" }} />
+              <col style={{ width: "10%" }} />
+              <col style={{ width: "8%" }} />
+            </colgroup>
             <thead>
               <tr style={{ borderBottom: "1px solid #ccc" }}>
-                <th style={{ textAlign: "left", padding: "0.5rem 0" }}>
+                <th style={{ textAlign: "left", padding: "0.5rem 0.75rem" }}>
                   <button
                     onClick={() => handleSortClick("devanagari")}
                     disabled={isFetching}
@@ -234,7 +249,7 @@ export default function Stats() {
                     Devanagari {sortColumn === "devanagari" && (sortDirection === "desc" ? "↓" : "↑")}
                   </button>
                 </th>
-                <th style={{ textAlign: "left", padding: "0.5rem 0" }}>
+                <th style={{ textAlign: "left", padding: "0.5rem 0.75rem" }}>
                   <button
                     onClick={() => handleSortClick("romanized")}
                     disabled={isFetching}
@@ -251,7 +266,7 @@ export default function Stats() {
                     Romanized {sortColumn === "romanized" && (sortDirection === "desc" ? "↓" : "↑")}
                   </button>
                 </th>
-                <th style={{ textAlign: "left", padding: "0.5rem 0" }}>
+                <th style={{ textAlign: "left", padding: "0.5rem 0.75rem" }}>
                   <button
                     onClick={() => handleSortClick("english")}
                     disabled={isFetching}
@@ -265,10 +280,27 @@ export default function Stats() {
                       opacity: isFetching ? 0.5 : 1,
                     }}
                   >
-                    English {sortColumn === "english" && (sortDirection === "desc" ? "↓" : "↑")}
+                    Original {sortColumn === "english" && (sortDirection === "desc" ? "↓" : "↑")}
                   </button>
                 </th>
-                <th style={{ textAlign: "right", padding: "0.5rem 0" }}>
+                <th style={{ textAlign: "left", padding: "0.5rem 0.75rem" }}>
+                  <button
+                    onClick={() => handleSortClick("override")}
+                    disabled={isFetching}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      cursor: isFetching ? "default" : "pointer",
+                      color: sortColumn === "override" ? "#fff" : "#aaa",
+                      fontSize: "0.9rem",
+                      padding: 0,
+                      opacity: isFetching ? 0.5 : 1,
+                    }}
+                  >
+                    Override {sortColumn === "override" && (sortDirection === "desc" ? "↓" : "↑")}
+                  </button>
+                </th>
+                <th style={{ textAlign: "right", padding: "0.5rem 0.75rem" }}>
                   <button
                     onClick={() => handleSortClick("count")}
                     disabled={isFetching}
@@ -285,23 +317,32 @@ export default function Stats() {
                     Reviews {sortColumn === "count" && (sortDirection === "desc" ? "↓" : "↑")}
                   </button>
                 </th>
-                <th style={{ textAlign: "center", padding: "0.5rem 0" }}></th>
+                <th style={{ textAlign: "center", padding: "0.5rem 0.75rem" }}></th>
               </tr>
             </thead>
             <tbody>
               {words.map((word, idx) => (
                 <tr key={idx} style={{ borderBottom: "1px solid #eee" }}>
-                  <td style={{ padding: "0.5rem 0" }}>{word.surface_devanagari}</td>
-                  <td style={{ padding: "0.5rem 0", color: "#666", fontSize: "0.85rem" }}>
+                  <td style={{ padding: "0.5rem 0.75rem" }}>{word.surface_devanagari}</td>
+                  <td style={{ padding: "0.5rem 0.75rem", color: "#666", fontSize: "0.85rem" }}>
                     {word.surface_romanized}
                   </td>
-                  <td style={{ padding: "0.5rem 0", color: "#666", fontSize: "0.85rem" }}>
-                    {word.english_gloss}
+                  <td style={{ padding: "0.5rem 0.75rem", color: "#666", fontSize: "0.85rem" }}>
+                    {word.word_sense_definition ?? word.english_gloss}
                   </td>
-                  <td style={{ padding: "0.5rem 0", textAlign: "right", fontWeight: "bold" }}>
+                  <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.85rem" }}>
+                    <GlossCell
+                      word_sense_id={word.word_sense_id}
+                      word_sense_definition={word.word_sense_definition}
+                      english_gloss={word.english_gloss}
+                      note={word.note}
+                      showFallback={false}
+                    />
+                  </td>
+                  <td style={{ padding: "0.5rem 0.75rem", textAlign: "right", fontWeight: "bold" }}>
                     {word.play_count}
                   </td>
-                  <td style={{ padding: "0.5rem 0", textAlign: "center" }}>
+                  <td style={{ padding: "0.5rem 0.75rem", textAlign: "center" }}>
                     {word.word_audio_path && word.sentence_word_id && (
                       <button
                         onClick={() => {
@@ -340,6 +381,7 @@ export default function Stats() {
               ))}
             </tbody>
           </table>
+          </div>
 
           <div style={{ marginTop: "1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.9rem" }}>
             <div style={{ color: "#888" }}>

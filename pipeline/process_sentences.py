@@ -171,10 +171,10 @@ def upsert_story(cur, meta: dict) -> str:
     story_id = str(uuid.uuid4())
     cur.execute(
         """
-        INSERT INTO stories (id, title, title_hi, author, source_url)
-        VALUES (%s, %s, %s, %s, %s)
+        INSERT INTO stories (id, title_hi, author, source_url)
+        VALUES (%s, %s, %s, %s)
         """,
-        (story_id, meta["title_hi"], meta["title_hi"], meta["author"], meta["source_url"]),
+        (story_id, meta["title_hi"], meta["author"], meta["source_url"]),
     )
     return story_id
 
@@ -193,9 +193,26 @@ def insert_sentence(cur, story_id: str, seq: int, deva: str, roman: str, english
     return sentence_id
 
 
+def _is_content_word(surface_deva: str) -> bool:
+    """Return False for zero-width spaces, punctuation-only, or whitespace-only tokens."""
+    import unicodedata
+    stripped = surface_deva.strip()
+    if not stripped:
+        return False
+    # Reject if every character is punctuation, whitespace, or a zero-width/format char
+    for ch in stripped:
+        cat = unicodedata.category(ch)
+        if cat.startswith("L") or cat.startswith("N") or cat.startswith("M"):
+            return True  # has at least one letter, digit, or combining mark
+    return False
+
+
 def insert_sentence_words(cur, sentence_id: str, glosses: list[tuple[str, str]]) -> None:
     """Insert SentenceWord rows for each word in a sentence."""
-    for position, (surface_deva, english_gloss) in enumerate(glosses):
+    position = 0
+    for surface_deva, english_gloss in glosses:
+        if not _is_content_word(surface_deva):
+            continue
         surface_roman = romanize(surface_deva)
         cur.execute(
             """
@@ -205,6 +222,7 @@ def insert_sentence_words(cur, sentence_id: str, glosses: list[tuple[str, str]])
             """,
             (str(uuid.uuid4()), sentence_id, position, surface_deva, surface_roman, english_gloss),
         )
+        position += 1
 
 
 # ---------------------------------------------------------------------------

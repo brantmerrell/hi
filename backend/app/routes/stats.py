@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.database import get_db
-from app.models import Sentence, SentenceWord, User, UserWordRead
+from app.models import SentenceWord, User, UserWordRead, WordSense, WordSenseNote
 from app.routes.auth import get_current_user
 from app.schemas import StatsOut, WordStatOut
 
@@ -63,12 +63,19 @@ async def get_word_stats(
         SentenceWord.surface_devanagari,
         SentenceWord.surface_romanized,
         func.count(UserWordRead.id).label("play_count"),
+        func.max(WordSenseNote.display_gloss).label("override_gloss"),
     ).outerjoin(
         UserWordRead,
         and_(
             UserWordRead.sentence_word_id == SentenceWord.id,
             UserWordRead.user_id == current_user.id,
         ),
+    ).outerjoin(
+        WordSense,
+        WordSense.id == SentenceWord.word_sense_id,
+    ).outerjoin(
+        WordSenseNote,
+        WordSenseNote.word_sense_id == WordSense.id,
     ).group_by(
         SentenceWord.surface_devanagari,
         SentenceWord.surface_romanized,
@@ -83,7 +90,10 @@ async def get_word_stats(
     elif sort_by == "romanized":
         order_clause = SentenceWord.surface_romanized.desc() if sort_is_desc else SentenceWord.surface_romanized
     elif sort_by == "english":
-        order_clause = func.max(func.coalesce(SentenceWord.english_gloss, "")).desc() if sort_is_desc else func.max(func.coalesce(SentenceWord.english_gloss, ""))
+        original_expr = func.max(func.coalesce(WordSense.english_definition, SentenceWord.english_gloss, ""))
+        order_clause = original_expr.desc() if sort_is_desc else original_expr
+    elif sort_by == "override":
+        order_clause = func.max(func.coalesce(WordSenseNote.display_gloss, "")).desc() if sort_is_desc else func.max(func.coalesce(WordSenseNote.display_gloss, ""))
     else:  # count
         order_clause = func.count(UserWordRead.id).desc() if sort_is_desc else func.count(UserWordRead.id)
 
@@ -125,6 +135,8 @@ async def get_word_stats(
                 SentenceWord.surface_devanagari,
                 SentenceWord.surface_romanized,
                 func.length(SentenceWord.english_gloss).desc(),
+            ).options(
+                joinedload(SentenceWord.word_sense).joinedload(WordSense.note)
             )
         )
         words = words_result.scalars().all()
@@ -150,6 +162,9 @@ async def get_word_stats(
                     surface_devanagari=word.surface_devanagari,
                     surface_romanized=word.surface_romanized,
                     english_gloss=word.english_gloss,
+                    word_sense_definition=word.word_sense_definition,
+                    note=word.note,
+                    word_sense_id=str(word.word_sense_id) if word.word_sense_id else None,
                     play_count=play_counts[surface_form],
                     word_audio_path=word.word_audio_path,
                     sentence_word_id=str(word.id),
