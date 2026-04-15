@@ -16,11 +16,12 @@ export default function Reader() {
   const [showGloss, setShowGloss] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // Tracks whether the current index was set by loading a bookmark (not user navigation),
-  // so we don't immediately write it back as a save.
+  // Cache of sentence id → full sentence (with words loaded)
+  const wordCache = useRef<Map<string, Sentence>>(new Map());
+  const [currentDetail, setCurrentDetail] = useState<Sentence | null>(null);
   const bookmarkLoadedRef = useRef(false);
 
-  // Load stories, sentences, then bookmark
+  // Load stories, sentence list (no words), then bookmark
   useEffect(() => {
     async function load() {
       try {
@@ -44,6 +45,7 @@ export default function Reader() {
         setSentences(sentencesData);
 
         // Load bookmark if signed in
+        let targetIndex = 0;
         const bmRes = await fetch(apiUrl(`/api/bookmarks/${story.id}`), {
           credentials: "include",
         });
@@ -52,8 +54,14 @@ export default function Reader() {
           const savedIndex = sentencesData.findIndex((s) => s.id === bm.sentence_id);
           if (savedIndex !== -1) {
             bookmarkLoadedRef.current = true;
+            targetIndex = savedIndex;
             setIndex(savedIndex);
           }
+        }
+
+        // Fetch words for the initial sentence
+        if (sentencesData[targetIndex]) {
+          fetchDetail(sentencesData[targetIndex].id);
         }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Unknown error");
@@ -64,7 +72,26 @@ export default function Reader() {
     load();
   }, []);
 
-  // Save bookmark whenever index changes (skip the initial load)
+  async function fetchDetail(sentenceId: string) {
+    if (wordCache.current.has(sentenceId)) {
+      setCurrentDetail(wordCache.current.get(sentenceId)!);
+      return;
+    }
+    const res = await fetch(apiUrl(`/api/sentences/${sentenceId}`));
+    if (!res.ok) return;
+    const data: Sentence = await res.json();
+    wordCache.current.set(sentenceId, data);
+    setCurrentDetail(data);
+  }
+
+  // Fetch word detail whenever index changes
+  useEffect(() => {
+    const sentence = sentences[index];
+    if (!sentence) return;
+    fetchDetail(sentence.id);
+  }, [index, sentences]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Save bookmark whenever index changes (skip the initial bookmark load)
   useEffect(() => {
     if (bookmarkLoadedRef.current) {
       bookmarkLoadedRef.current = false;
@@ -87,6 +114,8 @@ export default function Reader() {
 
   const sentence = sentences[index] ?? null;
   const story = stories[0] ?? null;
+  // Use cached detail for words/audio; fall back to list sentence for audio_path
+  const detail = currentDetail?.id === sentence?.id ? currentDetail : null;
 
   return (
     <main style={{ maxWidth: 720, margin: "0 auto", padding: "2rem 1rem" }}>
@@ -128,7 +157,10 @@ export default function Reader() {
         </header>
       )}
 
-      {sentence && !showGloss && <SentenceView sentence={sentence} />}
+      {detail && !showGloss && <SentenceView sentence={detail} />}
+      {sentence && !detail && !showGloss && (
+        <div style={{ color: "#555", fontSize: "0.9rem" }}>Loading…</div>
+      )}
 
       <div style={{ marginTop: "1rem" }}>
         <button
@@ -139,7 +171,7 @@ export default function Reader() {
         </button>
       </div>
 
-      {showGloss && sentence && <WordGloss words={sentence.words} />}
+      {showGloss && detail && <WordGloss words={detail.words} />}
 
       {sentence && <AudioPlayer audioPath={sentence.audio_path} sentenceId={sentence.id} />}
 

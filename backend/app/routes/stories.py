@@ -4,10 +4,9 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.database import get_db
-from app.models import Sentence, SentenceWord, Story, WordSense
+from app.models import Sentence, Story
 from app.schemas import SentenceOut, StoryOut
 
 router = APIRouter()
@@ -39,10 +38,5 @@ async def list_story_sentences(
         .order_by(Sentence.sequence_num)
         .offset(offset)
         .limit(limit)
-        .options(
-            selectinload(Sentence.words)
-            .selectinload(SentenceWord.word_sense)
-            .selectinload(WordSense.note)
-        )
     )
     return list(result.scalars().all())
