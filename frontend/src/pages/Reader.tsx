@@ -37,31 +37,30 @@ export default function Reader() {
         }
 
         const story = storiesData[0];
-        const sentencesRes = await fetch(
-          apiUrl(`/api/stories/${story.id}/sentences?limit=500`)
-        );
+
+        // Fetch sentences and bookmark in parallel
+        const [sentencesRes, bmRes] = await Promise.all([
+          fetch(apiUrl(`/api/stories/${story.id}/sentences?limit=500`)),
+          fetch(apiUrl(`/api/bookmarks/${story.id}`), { credentials: "include" }),
+        ]);
         if (!sentencesRes.ok) throw new Error("Failed to fetch sentences");
         const sentencesData: Sentence[] = await sentencesRes.json();
         setSentences(sentencesData);
 
-        // Load bookmark if signed in
+        // Start prefetching sentence 0 immediately while resolving bookmark
+        if (sentencesData[0]) fetchDetail(sentencesData[0].id);
+
+        // Resolve bookmark
         let targetIndex = 0;
-        const bmRes = await fetch(apiUrl(`/api/bookmarks/${story.id}`), {
-          credentials: "include",
-        });
         if (bmRes.ok) {
           const bm = await bmRes.json();
           const savedIndex = sentencesData.findIndex((s) => s.id === bm.sentence_id);
-          if (savedIndex !== -1) {
+          if (savedIndex !== -1 && savedIndex !== 0) {
             bookmarkLoadedRef.current = true;
             targetIndex = savedIndex;
             setIndex(savedIndex);
+            fetchDetail(sentencesData[savedIndex].id);
           }
-        }
-
-        // Fetch words for the initial sentence
-        if (sentencesData[targetIndex]) {
-          fetchDetail(sentencesData[targetIndex].id);
         }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Unknown error");
