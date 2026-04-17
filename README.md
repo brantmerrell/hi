@@ -37,6 +37,23 @@ AWS_SES_REGION=us-east-1
 FROM_EMAIL=noreply@yourdomain.com
 ```
 
+To use a custom domain (recommended over Gmail):
+```bash
+# Verify your domain — creates DKIM CNAME records to add at your DNS provider
+AWS_PROFILE=<profile> aws sesv2 create-email-identity --email-identity yourdomain.com --dkim-signing-attributes SigningAttributesOrigin=AWS_SES --region us-east-1
+
+# Check DKIM verification status (wait ~24h after adding DNS records)
+AWS_PROFILE=<profile> aws sesv2 get-email-identity --email-identity yourdomain.com --region us-east-1 --query 'DkimAttributes.Status' --output text
+
+# Request production access (removes sandbox sending restrictions)
+AWS_PROFILE=<profile> aws sesv2 put-account-details \
+  --mail-type TRANSACTIONAL \
+  --website-url https://yourdomain.com \
+  --use-case-description "Magic link authentication for registered users" \
+  --contact-language EN \
+  --region us-east-1
+```
+
 ---
 
 ## Getting Started
@@ -91,7 +108,16 @@ python enrich_glosses.py
 python generate_audio.py
 ```
 
-Steps 2–4 produce sentence-level English translations, word-level alignments, dictionary definitions, and audio files. Frontend corrections and additions are not yet implemented.
+Steps 2–4 produce sentence-level English translations, word-level alignments, dictionary definitions, and audio files.
+
+After generating audio, upload to S3 for production serving:
+
+```bash
+# Upload audio files to S3 (public-read)
+aws s3 sync data/audio/ s3://<your-bucket>/audio/ --acl public-read --profile <profile>
+```
+
+Set `AUDIO_S3_URL=https://<your-bucket>.s3.amazonaws.com` in both local `.env` and Heroku config. The backend will redirect `/audio/<path>` to S3 when this variable is set, or serve the local file as a fallback.
 
 ---
 
@@ -113,7 +139,8 @@ heroku config:set FROM_EMAIL=$FROM_EMAIL -a hi-api
 heroku config:set AZURE_TRANSLATOR_KEY=$AZURE_TRANSLATOR_KEY -a hi-api
 heroku config:set GOOGLE_CLOUD_API_KEY=$GOOGLE_CLOUD_API_KEY -a hi-api
 heroku config:set FRONTEND_URL=https://hi.jbm.eco -a hi-api
-heroku config:set FROM_EMAIL=$FROM_EMAIL -a hi-api
+heroku config:set AWS_SES_REGION=us-east-1 -a hi-api
+heroku config:set AUDIO_S3_URL=https://<your-bucket>.s3.amazonaws.com -a hi-api
 
 # Deploy
 git push heroku main
@@ -171,11 +198,12 @@ hi/
 │       ├── components/
 │       │   ├── SentenceView.tsx  — four-layer sentence display
 │       │   ├── WordGloss.tsx     — word-by-word toggle view
+│       │   ├── GlossCell.tsx     — inline-editable word gloss with override support
 │       │   ├── Navigation.tsx    — previous / next sentence
-│       │   ├── AudioPlayer.tsx   — Hindi pronunciation playback
-│       │   └── Stats.tsx         — reading statistics display
+│       │   └── AudioPlayer.tsx   — Hindi pronunciation playback
 │       └── pages/
 │           ├── Reader.tsx        — main reading page
+│           ├── Stats.tsx         — reading statistics with gloss override editing
 │           └── Auth.tsx          — magic link email entry
 ├── pipeline/
 │   ├── fetch_text.py        — fetch Premchand stories from Wikisource / Internet Archive
