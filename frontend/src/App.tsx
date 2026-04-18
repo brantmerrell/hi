@@ -22,6 +22,7 @@ function App() {
           <Route path="/auth" element={<Auth />} />
           <Route path="/stats" element={<Stats />} />
           <Route path="/:storyNum/:sentenceNum" element={<Reader />} />
+          <Route path="/:storyNum" element={<Reader />} />
           <Route path="/" element={<Reader />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
