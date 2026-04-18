@@ -15,7 +15,9 @@ router = APIRouter()
 @router.get("", response_model=list[StoryOut])
 async def list_stories(db: AsyncSession = Depends(get_db)) -> list[Story]:
     """Return all stories ordered by creation date (newest first)."""
-    result = await db.execute(select(Story).order_by(Story.created_at.desc()))
+    result = await db.execute(
+        select(Story).order_by(Story.position.asc().nulls_last(), Story.created_at.asc())
+    )
     return list(result.scalars().all())
 
 

@@ -56,6 +56,7 @@ class StoryOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
+    position: Optional[int] = None
     title_hi: str
     title_en: Optional[str] = None
     author: str
@@ -90,10 +91,10 @@ class BookmarkIn(BaseModel):
 
 
 class BookmarkOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
     story_id: uuid.UUID
+    story_position: Optional[int]
     sentence_id: uuid.UUID
+    sentence_seq_num: int
     updated_at: datetime
 
 

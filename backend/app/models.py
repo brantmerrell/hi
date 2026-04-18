@@ -26,6 +26,7 @@ class Story(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
+    position: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, unique=True)
     title_hi: Mapped[str] = mapped_column(String, nullable=False)
     title_en: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     author: Mapped[str] = mapped_column(String, nullable=False)
@@ -183,13 +184,12 @@ class MagicLink(Base):
 
 class Bookmark(Base):
     __tablename__ = "bookmarks"
-    __table_args__ = (UniqueConstraint("user_id", "story_id", name="uq_bookmark_user_story"),)
 
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), primary_key=True
     )
     story_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("stories.id"), primary_key=True
+        UUID(as_uuid=True), ForeignKey("stories.id"), nullable=False
     )
     sentence_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("sentences.id"), nullable=False

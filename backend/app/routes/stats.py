@@ -131,9 +131,15 @@ async def get_word_stats(
                     SentenceWord.surface_devanagari.in_([sf[0] for sf in page_surface_forms]),
                     SentenceWord.surface_romanized.in_([sf[1] for sf in page_surface_forms]),
                 )
+            ).outerjoin(
+                SentenceWord.word_sense
+            ).outerjoin(
+                WordSense.note
             ).order_by(
                 SentenceWord.surface_devanagari,
                 SentenceWord.surface_romanized,
+                # Prefer words with a note override first
+                WordSenseNote.display_gloss.is_(None),
                 func.length(SentenceWord.english_gloss).desc(),
             ).options(
                 joinedload(SentenceWord.word_sense).joinedload(WordSense.note)

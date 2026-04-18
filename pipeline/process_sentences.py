@@ -2,13 +2,13 @@
 process_sentences.py — Segment, translate, romanize, and insert a story into the database.
 
 Usage:
-    python process_sentences.py <slug>
+    python process_sentences.py <slug> --position <n>
 
 Example:
-    python process_sentences.py --namak-ka-daroga
+    python process_sentences.py story-938-94c-924 --position 2
 
 The slug must match a file pair in data/raw/<slug>.txt and data/raw/<slug>.json,
-created by fetch_text.py.
+created by fetch_text.py. --position is required and must not already be in use.
 
 This script:
   1. Segments the raw text into sentences on Devanagari danda (।) and standard punctuation.
@@ -20,6 +20,7 @@ This script:
 Requires environment variables: DATABASE_URL, AZURE_TRANSLATOR_KEY, AZURE_TRANSLATOR_REGION
 """
 
+import argparse
 import json
 import os
 import re
@@ -162,7 +163,7 @@ def get_connection(database_url: str):
     return psycopg2.connect(url)
 
 
-def upsert_story(cur, meta: dict) -> str:
+def upsert_story(cur, meta: dict, title_en: str, position: int) -> str:
     """Insert story if not present (match on source_url). Return story UUID."""
     cur.execute("SELECT id FROM stories WHERE source_url = %s", (meta["source_url"],))
     row = cur.fetchone()
@@ -171,10 +172,10 @@ def upsert_story(cur, meta: dict) -> str:
     story_id = str(uuid.uuid4())
     cur.execute(
         """
-        INSERT INTO stories (id, title_hi, author, source_url)
-        VALUES (%s, %s, %s, %s)
+        INSERT INTO stories (id, position, title_hi, title_en, author, source_url)
+        VALUES (%s, %s, %s, %s, %s, %s)
         """,
-        (story_id, meta["title_hi"], meta["author"], meta["source_url"]),
+        (story_id, position, meta["title_hi"], title_en, meta["author"], meta["source_url"]),
     )
     return story_id
 
@@ -230,12 +231,13 @@ def insert_sentence_words(cur, sentence_id: str, glosses: list[tuple[str, str]])
 # ---------------------------------------------------------------------------
 
 def main() -> None:
-    if len(sys.argv) < 2:
-        print("Usage: python process_sentences.py <slug>")
-        print("Example: python process_sentences.py --namak-ka-daroga")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description="Process and insert a story into the database.")
+    parser.add_argument("slug", help="Slug matching data/raw/<slug>.txt and .json")
+    parser.add_argument("--position", type=int, required=True, help="Story position (must be unique)")
+    args = parser.parse_args()
 
-    slug = sys.argv[1].lstrip("-")
+    slug = args.slug.lstrip("-")
+    position = args.position
 
     text_path = DATA_DIR / f"{slug}.txt"
     meta_path = DATA_DIR / f"{slug}.json"
@@ -258,13 +260,33 @@ def main() -> None:
         print("Error: AZURE_TRANSLATOR_KEY not set in environment")
         sys.exit(1)
 
-    sentences = segment_sentences(text)
-    print(f"Found {len(sentences)} sentences in {slug}")
-
     conn = get_connection(database_url)
     cur = conn.cursor()
 
-    story_id = upsert_story(cur, meta)
+    # Fail immediately if position is already taken
+    cur.execute("SELECT title_hi FROM stories WHERE position = %s", (position,))
+    conflict = cur.fetchone()
+    if conflict:
+        print(f"Error: position {position} is already used by '{conflict[0]}'")
+        cur.close()
+        conn.close()
+        sys.exit(1)
+
+    # Translate the title
+    print(f"Translating title '{meta['title_hi']}'...")
+    try:
+        title_en, _ = translate_with_alignment(meta["title_hi"], azure_key, azure_region)
+    except Exception as e:
+        print(f"Error translating title: {e}")
+        cur.close()
+        conn.close()
+        sys.exit(1)
+    print(f"Title (EN): {title_en}")
+
+    sentences = segment_sentences(text)
+    print(f"Found {len(sentences)} sentences in {slug}")
+
+    story_id = upsert_story(cur, meta, title_en, position)
     conn.commit()
     print(f"Story ID: {story_id}")
 

@@ -8,11 +8,17 @@ import { useAuth } from "../context/AuthContext";
 import { apiUrl } from "../api";
 import type { Sentence, Story } from "../types";
 
+interface Bookmark {
+  story_position: number | null;
+  sentence_seq_num: number;
+}
+
 export default function Reader() {
   const { user, setUser } = useAuth();
   const { storyNum: storyNumStr, sentenceNum: sentenceNumStr } = useParams<{ storyNum?: string; sentenceNum?: string }>();
   const navigate = useNavigate();
   const [stories, setStories] = useState<Story[]>([]);
+  const [currentStory, setCurrentStory] = useState<Story | null>(null);
   const [sentences, setSentences] = useState<Sentence[]>([]);
   const [index, setIndex] = useState(0);
   const [showGloss, setShowGloss] = useState(false);
@@ -20,51 +26,91 @@ export default function Reader() {
   const [error, setError] = useState<string | null>(null);
   const wordCache = useRef<Map<string, Sentence>>(new Map());
   const [currentDetail, setCurrentDetail] = useState<Sentence | null>(null);
-  const bookmarkLoadedRef = useRef(false);
+  const skipBookmarkSave = useRef(false);
 
+  // Load story list once
   useEffect(() => {
-    async function load() {
+    async function loadStories() {
       try {
-        const storiesRes = await fetch(apiUrl("/api/stories"));
-        if (!storiesRes.ok) throw new Error("Failed to fetch stories");
-        const storiesData: Story[] = await storiesRes.json();
-        setStories(storiesData);
-
-        if (storiesData.length === 0) {
+        const res = await fetch(apiUrl("/api/stories"));
+        if (!res.ok) throw new Error("Failed to fetch stories");
+        const data: Story[] = await res.json();
+        if (data.length === 0) {
           setError("No stories in the database yet.");
           setLoading(false);
           return;
         }
+        setStories(data);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Unknown error");
+        setLoading(false);
+      }
+    }
+    loadStories();
+  }, []);
 
-        const story = storiesData[0];
+  // Load sentences whenever stories list or storyNum param changes
+  useEffect(() => {
+    if (!stories.length) return;
 
-        const [sentencesRes, bmRes] = await Promise.all([
-          fetch(apiUrl(`/api/stories/${story.id}/sentences?limit=500`)),
-          fetch(apiUrl(`/api/bookmarks/${story.id}`), { credentials: "include" }),
-        ]);
+    const storyPos = storyNumStr ? parseInt(storyNumStr) : null;
+    const story = storyPos !== null ? (stories.find((s) => s.position === storyPos) ?? null) : null;
+
+    async function loadSentences() {
+      try {
+        // Fetch global bookmark (best-effort; null if unauthenticated or none saved)
+        const bmRes = await fetch(apiUrl("/api/bookmarks"), { credentials: "include" });
+        const bm: Bookmark | null = bmRes.ok ? await bmRes.json() : null;
+
+        // Rule: no story in URL or story position not found → redirect to bookmark or first story/sentence
+        if (!storyNumStr || !story) {
+          skipBookmarkSave.current = true;
+          if (bm && bm.story_position !== null) {
+            navigate(`/${bm.story_position}/${bm.sentence_seq_num + 1}`, { replace: true });
+          } else {
+            const fallback = stories[0];
+            navigate(`/${fallback.position ?? 0}/1`, { replace: true });
+          }
+          return;
+        }
+
+        // Story exists — load its sentences
+        setCurrentStory(story);
+        wordCache.current = new Map();
+        setCurrentDetail(null);
+
+        const sentencesRes = await fetch(apiUrl(`/api/stories/${story.id}/sentences?limit=500`));
         if (!sentencesRes.ok) throw new Error("Failed to fetch sentences");
         const sentencesData: Sentence[] = await sentencesRes.json();
         setSentences(sentencesData);
 
-        if (!storyNumStr || !sentenceNumStr) {
-          // No URL params: redirect to bookmark or first sentence
-          let targetSeqNum = sentencesData[0]?.sequence_num ?? 1;
-          if (bmRes.ok) {
-            const bm = await bmRes.json();
-            const savedIdx = sentencesData.findIndex((s) => s.id === bm.sentence_id);
-            if (savedIdx !== -1) targetSeqNum = sentencesData[savedIdx].sequence_num;
-          }
-          bookmarkLoadedRef.current = true;
-          navigate(`/1/${targetSeqNum + 1}`, { replace: true });
+        if (!sentenceNumStr) {
+          // Rule: story exists, no sentence → use bookmark if same story, else first sentence
+          skipBookmarkSave.current = true;
+          const bmSeq = bm && bm.story_position === storyPos ? bm.sentence_seq_num : null;
+          const targetSeqNum = bmSeq !== null ? bmSeq + 1 : 1;
+          navigate(`/${storyPos}/${targetSeqNum}`, { replace: true });
+          return;
         }
+
+        // Rule: story and sentence both specified — validate sentence exists
+        const seqNum = parseInt(sentenceNumStr) - 1;
+        const idx = sentencesData.findIndex((s) => s.sequence_num === seqNum);
+        if (idx === -1) {
+          // Rule: sentence doesn't exist → redirect to first sentence of story
+          skipBookmarkSave.current = true;
+          navigate(`/${storyPos}/1`, { replace: true });
+          return;
+        }
+        // Valid — index will be set by the sync effect below
       } catch (e) {
         setError(e instanceof Error ? e.message : "Unknown error");
       } finally {
         setLoading(false);
       }
     }
-    load();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    loadSentences();
+  }, [stories, storyNumStr]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync index from URL params whenever params or sentences change
   // sentenceNum in URL is 1-based; sequence_num in DB is 0-based
@@ -94,17 +140,16 @@ export default function Reader() {
     fetchDetail(sentence.id);
   }, [index, sentences]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Save bookmark whenever index changes (skip the initial bookmark-driven navigation)
+  // Save global bookmark whenever index changes
   useEffect(() => {
-    if (bookmarkLoadedRef.current) {
-      bookmarkLoadedRef.current = false;
+    if (skipBookmarkSave.current) {
+      skipBookmarkSave.current = false;
       return;
     }
-    const story = stories[0];
     const sentence = sentences[index];
-    if (!user || !story || !sentence) return;
+    if (!user || !sentence) return;
 
-    fetch(apiUrl(`/api/bookmarks/${story.id}`), {
+    fetch(apiUrl("/api/bookmarks"), {
       method: "PUT",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
@@ -114,14 +159,13 @@ export default function Reader() {
 
   function goTo(newIdx: number) {
     const s = sentences[newIdx];
-    if (s) navigate(`/1/${s.sequence_num + 1}`);
+    if (s) navigate(`/${currentStory?.position ?? storyNumStr ?? 0}/${s.sequence_num + 1}`);
   }
 
   if (loading) return <main><p>Loading...</p></main>;
   if (error) return <main><p>Error: {error}</p></main>;
 
   const sentence = sentences[index] ?? null;
-  const story = stories[0] ?? null;
   const detail = currentDetail?.id === sentence?.id ? currentDetail : null;
 
   return (
@@ -150,16 +194,16 @@ export default function Reader() {
         )}
       </div>
 
-      {story && (
+      {currentStory && (
         <header style={{ marginBottom: "1.5rem" }}>
-          <h1 style={{ margin: 0 }}>{story.title_hi}</h1>
-          {story.title_en && (
+          <h1 style={{ margin: 0 }}>{currentStory.title_hi}</h1>
+          {currentStory.title_en && (
             <p style={{ margin: "0.1rem 0 0", color: "#ccc", fontSize: "1rem" }}>
-              {story.title_en}
+              {currentStory.title_en}
             </p>
           )}
           <p style={{ margin: "0.25rem 0 0", color: "#888", fontSize: "0.9rem" }}>
-            {story.author} · sentence {index + 1} of {sentences.length}
+            {currentStory.author} · sentence {index + 1} of {sentences.length}
           </p>
         </header>
       )}

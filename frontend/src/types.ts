@@ -23,6 +23,7 @@ export interface Sentence {
 
 export interface Story {
   id: string;
+  position: number | null;
   title_hi: string;
   title_en: string | null;
   author: string;

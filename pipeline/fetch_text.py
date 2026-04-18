@@ -104,8 +104,10 @@ def slugify(title: str) -> str:
             ascii_words.append(word)
     slug = "-".join(ascii_words).lower()
     if not slug:
-        # Pure Devanagari title — use codepoints of first 4 chars as slug
-        slug = "story-" + "-".join(f"{ord(c):x}" for c in title[:4])
+        # Pure Devanagari title — use the last path segment (after '/') for uniqueness,
+        # then encode as Unicode codepoints
+        unique_part = title.split("/")[-1].strip()
+        slug = "story-" + "-".join(f"{ord(c):x}" for c in unique_part[:6])
     return slug
 
 
