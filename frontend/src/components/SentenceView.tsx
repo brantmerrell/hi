@@ -34,7 +34,7 @@ export default function SentenceView({ sentence }: Props) {
       <div style={layer}>
         <div style={label}>Word-for-word</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem 1rem" }}>
-          {sentence.words.map((w) => (
+          {(sentence.words ?? []).map((w) => (
             <div key={w.id} style={{ textAlign: "center", minWidth: "2rem" }}>
               <div style={{ fontFamily: "serif", fontSize: "1.1rem" }}>
                 {w.surface_devanagari}

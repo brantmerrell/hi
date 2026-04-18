@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import AudioPlayer from "../components/AudioPlayer";
 import Navigation from "../components/Navigation";
 import SentenceView from "../components/SentenceView";
@@ -10,18 +10,18 @@ import type { Sentence, Story } from "../types";
 
 export default function Reader() {
   const { user, setUser } = useAuth();
+  const { storyNum: storyNumStr, sentenceNum: sentenceNumStr } = useParams<{ storyNum?: string; sentenceNum?: string }>();
+  const navigate = useNavigate();
   const [stories, setStories] = useState<Story[]>([]);
   const [sentences, setSentences] = useState<Sentence[]>([]);
   const [index, setIndex] = useState(0);
   const [showGloss, setShowGloss] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // Cache of sentence id → full sentence (with words loaded)
   const wordCache = useRef<Map<string, Sentence>>(new Map());
   const [currentDetail, setCurrentDetail] = useState<Sentence | null>(null);
   const bookmarkLoadedRef = useRef(false);
 
-  // Load stories, sentence list (no words), then bookmark
   useEffect(() => {
     async function load() {
       try {
@@ -38,7 +38,6 @@ export default function Reader() {
 
         const story = storiesData[0];
 
-        // Fetch sentences and bookmark in parallel
         const [sentencesRes, bmRes] = await Promise.all([
           fetch(apiUrl(`/api/stories/${story.id}/sentences?limit=500`)),
           fetch(apiUrl(`/api/bookmarks/${story.id}`), { credentials: "include" }),
@@ -47,20 +46,16 @@ export default function Reader() {
         const sentencesData: Sentence[] = await sentencesRes.json();
         setSentences(sentencesData);
 
-        // Start prefetching sentence 0 immediately while resolving bookmark
-        if (sentencesData[0]) fetchDetail(sentencesData[0].id);
-
-        // Resolve bookmark
-        let targetIndex = 0;
-        if (bmRes.ok) {
-          const bm = await bmRes.json();
-          const savedIndex = sentencesData.findIndex((s) => s.id === bm.sentence_id);
-          if (savedIndex !== -1 && savedIndex !== 0) {
-            bookmarkLoadedRef.current = true;
-            targetIndex = savedIndex;
-            setIndex(savedIndex);
-            fetchDetail(sentencesData[savedIndex].id);
+        if (!storyNumStr || !sentenceNumStr) {
+          // No URL params: redirect to bookmark or first sentence
+          let targetSeqNum = sentencesData[0]?.sequence_num ?? 1;
+          if (bmRes.ok) {
+            const bm = await bmRes.json();
+            const savedIdx = sentencesData.findIndex((s) => s.id === bm.sentence_id);
+            if (savedIdx !== -1) targetSeqNum = sentencesData[savedIdx].sequence_num;
           }
+          bookmarkLoadedRef.current = true;
+          navigate(`/1/${targetSeqNum + 1}`, { replace: true });
         }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Unknown error");
@@ -69,7 +64,16 @@ export default function Reader() {
       }
     }
     load();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync index from URL params whenever params or sentences change
+  // sentenceNum in URL is 1-based; sequence_num in DB is 0-based
+  useEffect(() => {
+    if (!sentences.length || !sentenceNumStr) return;
+    const seqNum = parseInt(sentenceNumStr) - 1;
+    const idx = sentences.findIndex((s) => s.sequence_num === seqNum);
+    if (idx !== -1) setIndex(idx);
+  }, [sentenceNumStr, sentences]);
 
   async function fetchDetail(sentenceId: string) {
     if (wordCache.current.has(sentenceId)) {
@@ -90,7 +94,7 @@ export default function Reader() {
     fetchDetail(sentence.id);
   }, [index, sentences]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Save bookmark whenever index changes (skip the initial bookmark load)
+  // Save bookmark whenever index changes (skip the initial bookmark-driven navigation)
   useEffect(() => {
     if (bookmarkLoadedRef.current) {
       bookmarkLoadedRef.current = false;
@@ -108,12 +112,16 @@ export default function Reader() {
     });
   }, [index]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  function goTo(newIdx: number) {
+    const s = sentences[newIdx];
+    if (s) navigate(`/1/${s.sequence_num + 1}`);
+  }
+
   if (loading) return <main><p>Loading...</p></main>;
   if (error) return <main><p>Error: {error}</p></main>;
 
   const sentence = sentences[index] ?? null;
   const story = stories[0] ?? null;
-  // Use cached detail for words/audio; fall back to list sentence for audio_path
   const detail = currentDetail?.id === sentence?.id ? currentDetail : null;
 
   return (
@@ -170,13 +178,13 @@ export default function Reader() {
         </button>
       </div>
 
-      {showGloss && detail && <WordGloss words={detail.words} />}
+      {showGloss && detail && <WordGloss words={detail.words ?? []} />}
 
       {sentence && <AudioPlayer audioPath={sentence.audio_path} sentenceId={sentence.id} />}
 
       <Navigation
-        onPrev={() => setIndex((i) => Math.max(0, i - 1))}
-        onNext={() => setIndex((i) => Math.min(sentences.length - 1, i + 1))}
+        onPrev={() => goTo(Math.max(0, index - 1))}
+        onNext={() => goTo(Math.min(sentences.length - 1, index + 1))}
         hasPrev={index > 0}
         hasNext={index < sentences.length - 1}
       />

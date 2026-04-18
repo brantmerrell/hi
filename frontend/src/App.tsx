@@ -19,10 +19,10 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Reader />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/stats" element={<Stats />} />
-          {/* Catch-all: redirect unknown paths to home */}
+          <Route path="/:storyNum/:sentenceNum" element={<Reader />} />
+          <Route path="/" element={<Reader />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
