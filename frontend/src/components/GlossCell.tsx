@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { apiUrl } from "../api";
 
 export interface GlossCellProps {
@@ -12,7 +12,9 @@ export interface GlossCellProps {
 }
 
 export default function GlossCell({ word_sense_id, word_sense_definition, english_gloss, note, showFallback = true, style }: GlossCellProps) {
-  const displayed = note ?? (showFallback ? (word_sense_definition ?? english_gloss ?? "—") : "");
+  const [committedNote, setCommittedNote] = useState(note);
+  useEffect(() => { setCommittedNote(note); }, [note]);
+  const displayed = committedNote ?? (showFallback ? (word_sense_definition ?? english_gloss ?? "—") : "");
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(displayed);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -26,7 +28,8 @@ export default function GlossCell({ word_sense_id, word_sense_definition, englis
   async function save() {
     setEditing(false);
     if (!word_sense_id || draft === displayed) return;
-    await fetch(apiUrl(`/api/sentences/words/senses/${word_sense_id}/note`), {
+    setCommittedNote(draft);
+    fetch(apiUrl(`/api/sentences/words/senses/${word_sense_id}/note`), {
       method: "PUT",
       credentials: "include",
       headers: { "Content-Type": "application/json" },

@@ -69,7 +69,8 @@ docker compose up -d
 From the `backend` directory:
 
 ```bash
-python -m venv .venv && source .venv/bin/activate
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
 # Edit .env — set SECRET_KEY and AWS SES credentials at minimum
