@@ -175,7 +175,7 @@ export default function Reader() {
           <>
             <span>{user.display_name ?? user.email}</span>
             {" · "}
-            <Link to="/stats" style={{ color: "#888" }}>
+            <Link to="/words" style={{ color: "#888" }}>
               Words
             </Link>
             {" · "}

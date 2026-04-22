@@ -323,7 +323,7 @@ export default function Stats() {
             <tbody>
               {words.map((word, idx) => (
                 <tr key={idx} style={{ borderBottom: "1px solid #eee" }}>
-                  <td style={{ padding: "0.5rem 0.75rem" }}>{word.surface_devanagari}</td>
+                  <td style={{ padding: "0.5rem 0.75rem", fontFamily: "serif", fontSize: "1.3rem" }}>{word.surface_devanagari}</td>
                   <td style={{ padding: "0.5rem 0.75rem", color: "#666", fontSize: "0.85rem" }}>
                     {word.surface_romanized}
                   </td>

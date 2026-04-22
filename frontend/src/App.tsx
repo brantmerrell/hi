@@ -20,7 +20,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/auth" element={<Auth />} />
-          <Route path="/stats" element={<Stats />} />
+          <Route path="/words" element={<Stats />} />
           <Route path="/:storyNum/:sentenceNum" element={<Reader />} />
           <Route path="/:storyNum" element={<Reader />} />
           <Route path="/" element={<Reader />} />
