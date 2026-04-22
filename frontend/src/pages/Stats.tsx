@@ -98,7 +98,7 @@ export default function Stats() {
         )}
       </div>
 
-      <h1 style={{ margin: 0 }}>Word Review Stats</h1>
+      <h1 style={{ margin: 0 }}>Words</h1>
       {isFetching && (
         <div style={{
           position: "fixed",

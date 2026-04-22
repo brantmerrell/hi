@@ -158,10 +158,27 @@ heroku domains:add hi-api.jbm.eco -a hi-api
 
 Update your DNS provider to point `hi-api.jbm.eco` to the DNS target shown by `heroku domains -a hi-api`.
 
-To migrate data from a local Docker-based PostgreSQL to Heroku:
+To sync local data to Heroku (full replacement — wipes Heroku data first):
 
 ```bash
-docker exec hi-db-1 pg_dump -U postgres hindi_app | psql $(heroku config:get DATABASE_URL -a hi-api)
+# 1. Wipe the Heroku database (confirms via prompt)
+heroku pg:reset DATABASE_URL -a hi-api
+
+# 2. Run migrations on the fresh database
+heroku run "cd backend && alembic upgrade head" -a hi-api
+
+# 3. Dump from local Docker container and stream into Heroku
+#    (run pg_dump inside the container to avoid pg_dump version mismatch)
+docker exec hi-db-1 pg_dump -U postgres hindi_app \
+  | psql "$(heroku config:get DATABASE_URL -a hi-api)"
+```
+
+The `hi-db-1` container name comes from `docker compose ps`. If it differs, substitute accordingly.
+
+To backfill English story titles after a data sync (stories added before `process_sentences.py` started translating titles automatically will have `title_en = NULL`):
+
+```bash
+DATABASE_URL=$(heroku config:get DATABASE_URL -a hi-api) python pipeline/backfill_story_titles.py
 ```
 
 ### Frontend (GitHub Pages)

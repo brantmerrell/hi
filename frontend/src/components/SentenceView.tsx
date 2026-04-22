@@ -58,10 +58,12 @@ export default function SentenceView({ sentence }: Props) {
                     background: "none",
                     border: "none",
                     cursor: "pointer",
-                    padding: "0",
-                    fontSize: "0.75rem",
+                    padding: "0.5rem",
+                    fontSize: "1.2rem",
                     color: "#aaa",
                     lineHeight: 1,
+                    minWidth: "2.5rem",
+                    minHeight: "2.5rem",
                   }}
                 >
                   ▶
