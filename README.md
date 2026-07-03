@@ -89,7 +89,18 @@ npm install
 npm run dev
 ```
 
-App runs at http://localhost:5173
+Vite binds to the first available port starting at 5173 and opens it in your browser automatically (if 5173 is taken by another project, it'll use 5174, 5175, etc. — watch the terminal output, or let `--open` do it for you).
+
+### Daily development (Makefile)
+
+Once the one-time setup above is done (backend `.venv` + `.env`, `npm install` in `frontend`), use the `Makefile` to start/stop everything instead of steps 1–3:
+
+```bash
+make dev   # starts Postgres (docker-compose up -d), backend (uvicorn --reload), and frontend (npm run dev)
+make stop  # stops the Postgres container
+```
+
+`make dev` runs in the foreground; press `Ctrl+C` to stop the backend and frontend (Postgres keeps running until you run `make stop`).
 
 ### 4. Pipeline (loading text content)
 
