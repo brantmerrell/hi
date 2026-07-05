@@ -141,7 +141,7 @@ async def get_word_stats(
                 # Prefer words with a note override first
                 WordSenseNote.display_gloss.is_(None),
                 # Then prefer words that can be overridden
-                SentenceWord.word_sense_id.is_(None),
+                SentenceWord.word_sense_id.is_not(None).desc(),
                 func.length(SentenceWord.english_gloss).desc(),
             ).options(
                 joinedload(SentenceWord.word_sense).joinedload(WordSense.note)
