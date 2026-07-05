@@ -15,6 +15,7 @@ export default function GlossCell({ word_sense_id, word_sense_definition, englis
   const [committedNote, setCommittedNote] = useState(note);
   useEffect(() => { setCommittedNote(note); }, [note]);
   const displayed = committedNote ?? (showFallback ? (word_sense_definition ?? english_gloss ?? "—") : "");
+  const emptyDisplayed = displayed === "";
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(displayed);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -73,10 +74,12 @@ export default function GlossCell({ word_sense_id, word_sense_definition, englis
       title={word_sense_id ? "Click to override" : undefined}
       style={{
         cursor: word_sense_id ? "text" : "default",
+        display: "inline-block",
+        minWidth: emptyDisplayed ? "1ch" : undefined,
         ...style,
       }}
     >
-      {displayed}
+      {emptyDisplayed ? "\u00A0" : displayed}
     </span>
   );
 }
