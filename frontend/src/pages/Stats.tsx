@@ -32,6 +32,7 @@ export default function Stats() {
   const [appliedMaxReviews, setAppliedMaxReviews] = useState(999999);
   const [offset, setOffset] = useState(0);
   const [summary, setSummary] = useState({ count: 0, mean: 0, min: 0, max: 0 });
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const LIMIT = 10;
   const MAX_REVIEWS_DEFAULT = 999999;
 
@@ -225,10 +226,10 @@ export default function Stats() {
             <colgroup>
               <col style={{ width: "12%" }} />
               <col style={{ width: "12%" }} />
-              <col style={{ width: "30%" }} />
               <col style={{ width: "28%" }} />
+              <col style={{ width: "26%" }} />
               <col style={{ width: "10%" }} />
-              <col style={{ width: "8%" }} />
+              <col style={{ width: "12%" }} />
             </colgroup>
             <thead>
               <tr style={{ borderBottom: "1px solid #ccc" }}>
@@ -322,7 +323,14 @@ export default function Stats() {
             </thead>
             <tbody>
               {words.map((word, idx) => (
-                <tr key={idx} style={{ borderBottom: "1px solid #eee" }}>
+                <tr
+                  key={idx}
+                  style={{
+                    borderBottom: "1px solid #eee",
+                    backgroundColor: highlightedId === word.sentence_word_id ? "rgba(30, 144, 255, 0.22)" : undefined,
+                    transition: "background-color 0.2s ease-out",
+                  }}
+                >
                   <td style={{ padding: "0.5rem 0.75rem", fontFamily: "serif", fontSize: "1.3rem" }}>{word.surface_devanagari}</td>
                   <td style={{ padding: "0.5rem 0.75rem", color: "#666", fontSize: "0.85rem" }}>
                     {word.surface_romanized}
@@ -342,34 +350,48 @@ export default function Stats() {
                   <td style={{ padding: "0.5rem 0.75rem", textAlign: "right", fontWeight: "bold" }}>
                     {word.play_count}
                   </td>
-                  <td style={{ padding: "0.5rem 0.75rem", textAlign: "center" }}>
+                  <td style={{ padding: "0.25rem 0.5rem", textAlign: "center" }}>
                     {word.word_audio_path && word.sentence_word_id && (
                       <button
                         onClick={() => {
+                          const wordId = word.sentence_word_id!;
                           new Audio(apiUrl(`/audio/${word.word_audio_path}`)).play();
-                          fetch(apiUrl(`/api/sentences/words/${word.sentence_word_id}/played`), {
+                          setHighlightedId(wordId);
+                          fetch(apiUrl(`/api/sentences/words/${wordId}/played`), {
                             method: "POST",
                             credentials: "include",
                           }).then(() => {
-                            // Refresh stats to show updated count
-                            fetch(apiUrl(`/api/stats/words?limit=${LIMIT}&offset=${offset}&min_reviews=${appliedMinReviews}&max_reviews=${appliedMaxReviews}&sort_by=${sortColumn}&sort_order=${sortDirection}`), { credentials: "include" })
-                              .then((r) => (r.ok ? r.json() : null))
-                              .then((data) => {
-                                if (data) {
-                                  setWords(data.words || []);
-                                  setSummary(data.summary || { count: 0, mean: 0, min: 0, max: 0 });
-                                }
-                              });
+                            // Give the user a couple of seconds to hear the
+                            // audio and see the highlighted row before the
+                            // updated play count re-sorts it out of view.
+                            // https://github.com/brantmerrell/hi/issues/9
+                            setTimeout(() => {
+                              fetch(apiUrl(`/api/stats/words?limit=${LIMIT}&offset=${offset}&min_reviews=${appliedMinReviews}&max_reviews=${appliedMaxReviews}&sort_by=${sortColumn}&sort_order=${sortDirection}`), { credentials: "include" })
+                                .then((r) => (r.ok ? r.json() : null))
+                                .then((data) => {
+                                  if (data) {
+                                    setWords(data.words || []);
+                                    setSummary(data.summary || { count: 0, mean: 0, min: 0, max: 0 });
+                                  }
+                                  setHighlightedId((current) => (current === wordId ? null : current));
+                                });
+                            }, 2000);
                           });
                         }}
                         title="Play audio"
                         style={{
-                          background: "none",
-                          border: "none",
+                          width: "2.25rem",
+                          height: "2.25rem",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          background: "#333",
+                          border: "1px solid #555",
+                          borderRadius: "0.25rem",
                           cursor: "pointer",
-                          padding: "0",
-                          fontSize: "0.8rem",
-                          color: "#666",
+                          padding: 0,
+                          fontSize: "1rem",
+                          color: "#eee",
                           lineHeight: 1,
                         }}
                       >

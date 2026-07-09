@@ -37,6 +37,21 @@ export function makeSentence(overrides: Partial<Record<string, unknown>> = {}) {
   };
 }
 
+export function makeStatWord(overrides: Partial<Record<string, unknown>> = {}) {
+  return {
+    surface_devanagari: "शब्द",
+    surface_romanized: "shabd",
+    english_gloss: "word",
+    word_sense_definition: "a unit of language",
+    note: null,
+    word_sense_id: "sense-1",
+    play_count: 3,
+    word_audio_path: "words/shabd.mp3",
+    sentence_word_id: "sw-1",
+    ...overrides,
+  };
+}
+
 /**
  * Stubs the read-only API surface the Reader page hits on load, so tests run
  * without a backend/database. Pass `sentences` to control the word list seen
