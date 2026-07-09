@@ -15,6 +15,7 @@ export default function GlossCell({ word_sense_id, word_sense_definition, englis
   const [committedNote, setCommittedNote] = useState(note);
   useEffect(() => { setCommittedNote(note); }, [note]);
   const displayed = committedNote ?? (showFallback ? (word_sense_definition ?? english_gloss ?? "—") : "");
+  const emptyDisplayed = displayed === "";
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(displayed);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -46,6 +47,7 @@ export default function GlossCell({ word_sense_id, word_sense_definition, englis
     return (
       <input
         ref={inputRef}
+        data-testid="gloss-cell-input"
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={save}
@@ -69,14 +71,19 @@ export default function GlossCell({ word_sense_id, word_sense_definition, englis
 
   return (
     <span
+      data-testid="gloss-cell"
       onClick={word_sense_id ? startEdit : undefined}
       title={word_sense_id ? "Click to override" : undefined}
       style={{
         cursor: word_sense_id ? "text" : "default",
+        display: "block",
+        minWidth: emptyDisplayed ? "1ch" : undefined,
+        width: emptyDisplayed ? "100%" : undefined,
+        minHeight: emptyDisplayed ? "1.2em" : undefined,
         ...style,
       }}
     >
-      {displayed}
+      {emptyDisplayed ? " " : displayed}
     </span>
   );
 }
