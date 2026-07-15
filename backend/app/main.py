@@ -4,6 +4,9 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
+# Local overrides win over .env — this is where scripts/dev.sh writes the
+# coordinator-assigned FRONTEND_URL for the current dev session.
+load_dotenv(".env.local", override=True)
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware

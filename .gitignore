@@ -12,6 +12,7 @@ venv/
 
 # Environment files
 .env
+.env.local
 
 # Frontend build
 node_modules/
