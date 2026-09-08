@@ -59,27 +59,34 @@ export default function Auth() {
   }
 
   return (
-    <main data-page="Auth">
-      <h1>Sign in</h1>
+    <main data-page="Auth" className="container is-max-desktop py-6 px-4" style={{ maxWidth: 420 }}>
+      <h1 className="title">Sign in</h1>
       {busy && !message ? (
         <p>Verifying...</p>
       ) : (
         <form onSubmit={handleSubmit}>
-          <label htmlFor="email">Email address</label>
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            disabled={busy}
-          />
-          <button type="submit" disabled={busy}>
-            Send magic link
-          </button>
+          <div className="field">
+            <label className="label" htmlFor="email">Email address</label>
+            <div className="control">
+              <input
+                id="email"
+                className="input"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                disabled={busy}
+              />
+            </div>
+          </div>
+          <div className="control">
+            <button type="submit" className="button is-link" disabled={busy}>
+              Send magic link
+            </button>
+          </div>
         </form>
       )}
-      {message && <p>{message}</p>}
+      {message && <p className="mt-4">{message}</p>}
     </main>
   );
 }

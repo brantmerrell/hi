@@ -162,29 +162,29 @@ export default function Reader() {
     if (s) navigate(`/${currentStory?.position ?? storyNumStr ?? 0}/${s.sequence_num + 1}`);
   }
 
-  if (loading) return <main><p>Loading...</p></main>;
-  if (error) return <main><p>Error: {error}</p></main>;
+  if (loading) return <main className="container is-max-desktop py-6 px-4"><p>Loading...</p></main>;
+  if (error) return <main className="container is-max-desktop py-6 px-4"><p>Error: {error}</p></main>;
 
   const sentence = sentences[index] ?? null;
   const detail = currentDetail?.id === sentence?.id ? currentDetail : null;
 
   return (
-    <main style={{ maxWidth: 720, margin: "0 auto", padding: "2rem 1rem" }}>
-      <div style={{ textAlign: "right", fontSize: "0.8rem", color: "#888", marginBottom: "0.5rem" }}>
+    <main className="container is-max-desktop py-6 px-4">
+      <div className="has-text-right is-size-7 has-text-grey mb-2">
         {user ? (
           <>
             <span>{user.display_name ?? user.email}</span>
             {" · "}
-            <Link to="/words" style={{ color: "#888" }}>
+            <Link to="/words" className="has-text-grey">
               Words
             </Link>
             {" · "}
             <button
+              className="button is-text is-small has-text-grey p-0"
               onClick={() =>
                 fetch(apiUrl("/api/auth/logout"), { method: "POST", credentials: "include" })
                   .then(() => setUser(null))
               }
-              style={{ background: "none", border: "none", cursor: "pointer", color: "#888", fontSize: "0.8rem", padding: 0 }}
             >
               Sign out
             </button>
@@ -195,14 +195,14 @@ export default function Reader() {
       </div>
 
       {currentStory && (
-        <header style={{ marginBottom: "1.5rem" }}>
-          <h1 style={{ margin: 0 }}>{currentStory.title_hi}</h1>
+        <header className="mb-5">
+          <h1 className="title mb-1 devanagari">{currentStory.title_hi}</h1>
           {currentStory.title_en && (
-            <p style={{ margin: "0.1rem 0 0", color: "#ccc", fontSize: "1rem" }}>
+            <p className="subtitle is-6 has-text-grey-light mb-1">
               {currentStory.title_en}
             </p>
           )}
-          <p style={{ margin: "0.25rem 0 0", color: "#888", fontSize: "0.9rem" }}>
+          <p className="is-size-7 has-text-grey">
             {currentStory.author} · sentence {index + 1} of {sentences.length}
           </p>
         </header>
@@ -210,13 +210,13 @@ export default function Reader() {
 
       {detail && !showGloss && <SentenceView sentence={detail} />}
       {sentence && !detail && !showGloss && (
-        <div style={{ color: "#555", fontSize: "0.9rem" }}>Loading…</div>
+        <p className="is-size-7 has-text-grey">Loading…</p>
       )}
 
-      <div style={{ marginTop: "1rem" }}>
+      <div className="mt-4">
         <button
+          className="button is-small"
           onClick={() => setShowGloss((v) => !v)}
-          style={{ fontSize: "0.85rem", padding: "0.3rem 0.75rem" }}
         >
           {showGloss ? "Show sentence" : "Show word-by-word"}
         </button>

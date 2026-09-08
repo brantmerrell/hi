@@ -48,20 +48,16 @@ export default function GlossCell({ word_sense_id, word_sense_definition, englis
       <input
         ref={inputRef}
         data-testid="gloss-cell-input"
+        className="input is-small"
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={save}
         onKeyDown={onKeyDown}
         style={{
-          background: "none",
-          border: "none",
-          borderBottom: "1px solid #666",
-          color: "inherit",
           fontSize: "inherit",
           fontFamily: "inherit",
-          padding: 0,
-          width: "100%",
-          outline: "none",
+          height: "auto",
+          padding: "0 0.25em",
           ...style,
         }}
         autoFocus

@@ -82,15 +82,19 @@ export default function Stats() {
     load();
   }, [user, offset, appliedMinReviews, appliedMaxReviews, sortColumn, sortDirection]);
 
+  function sortIndicator(column: SortColumn) {
+    if (sortColumn !== column) return null;
+    return sortDirection === "desc" ? " ↓" : " ↑";
+  }
 
   return (
-    <main style={{ maxWidth: 1000, margin: "0 auto", padding: "2rem 1rem" }}>
-      <div style={{ textAlign: "right", fontSize: "0.8rem", color: "#888", marginBottom: "0.5rem" }}>
+    <main className="container py-6 px-4">
+      <div className="has-text-right is-size-7 has-text-grey mb-2">
         {user ? (
           <>
             <span>{user.display_name ?? user.email}</span>
             {" · "}
-            <Link to="/" style={{ color: "#888" }}>
+            <Link to="/" className="has-text-grey">
               Back to reading
             </Link>
           </>
@@ -99,17 +103,19 @@ export default function Stats() {
         )}
       </div>
 
-      <h1 style={{ margin: 0 }}>Words</h1>
+      <h1 className="title mb-4">Words</h1>
       {isFetching && (
-        <div style={{
-          position: "fixed",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          fontSize: "3rem",
-          animation: "spin 1s linear infinite",
-          pointerEvents: "none",
-        }}>
+        <div
+          className="is-size-1"
+          style={{
+            position: "fixed",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            animation: "spin 1s linear infinite",
+            pointerEvents: "none",
+          }}
+        >
           ⟳
         </div>
       )}
@@ -129,315 +135,221 @@ export default function Stats() {
       ) : (
         <>
           {summary.count > 0 && (
-            <div
-              style={{
-                marginBottom: "1.5rem",
-                padding: "1rem",
-                backgroundColor: "#1a1a1a",
-                borderRadius: "0.25rem",
-                fontSize: "0.9rem",
-              }}
-            >
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1rem" }}>
-                <div>
-                  <div style={{ color: "#888", fontSize: "0.8rem", marginBottom: "0.25rem" }}>
-                    Count
-                  </div>
-                  <div style={{ fontSize: "1.3rem", fontWeight: "bold" }}>
-                    {summary.count}
-                  </div>
+            <div className="box mb-5">
+              <div className="columns is-mobile has-text-centered-mobile">
+                <div className="column">
+                  <p className="is-size-7 has-text-grey mb-1">Count</p>
+                  <p className="is-size-5 has-text-weight-bold">{summary.count}</p>
                 </div>
-                <div>
-                  <div style={{ color: "#888", fontSize: "0.8rem", marginBottom: "0.25rem" }}>
-                    Mean
-                  </div>
-                  <div style={{ fontSize: "1.3rem", fontWeight: "bold" }}>
-                    {summary.mean.toFixed(1)}
-                  </div>
+                <div className="column">
+                  <p className="is-size-7 has-text-grey mb-1">Mean</p>
+                  <p className="is-size-5 has-text-weight-bold">{summary.mean.toFixed(1)}</p>
                 </div>
-                <div>
-                  <div style={{ color: "#888", fontSize: "0.8rem", marginBottom: "0.25rem" }}>
-                    Min
-                  </div>
-                  <div style={{ fontSize: "1.3rem", fontWeight: "bold" }}>
-                    {summary.min}
-                  </div>
+                <div className="column">
+                  <p className="is-size-7 has-text-grey mb-1">Min</p>
+                  <p className="is-size-5 has-text-weight-bold">{summary.min}</p>
                 </div>
-                <div>
-                  <div style={{ color: "#888", fontSize: "0.8rem", marginBottom: "0.25rem" }}>
-                    Max
-                  </div>
-                  <div style={{ fontSize: "1.3rem", fontWeight: "bold" }}>
-                    {summary.max}
-                  </div>
+                <div className="column">
+                  <p className="is-size-7 has-text-grey mb-1">Max</p>
+                  <p className="is-size-5 has-text-weight-bold">{summary.max}</p>
                 </div>
               </div>
             </div>
           )}
 
-          <div style={{ marginBottom: "1rem", display: "flex", gap: "0.5rem", alignItems: "center" }}>
-            <label style={{ fontSize: "0.9rem", opacity: isFetching ? 0.5 : 1 }}>
+          <div className="field is-grouped is-align-items-center mb-4">
+            <label className="is-size-7" style={{ opacity: isFetching ? 0.5 : 1 }}>
               Reviews between{" "}
               <input
                 type="number"
                 min="0"
+                className="input is-small"
                 disabled={isFetching}
                 value={minReviews}
                 onChange={(e) => setMinReviews(parseInt(e.target.value) || 0)}
-                style={{ width: "3rem", marginLeft: "0.25rem", marginRight: "0.25rem" }}
+                style={{ width: "4.5rem", display: "inline-block", margin: "0 0.25rem" }}
               />
               and{" "}
               <input
                 type="number"
                 min="0"
+                className="input is-small"
                 disabled={isFetching}
                 value={maxReviews === MAX_REVIEWS_DEFAULT ? "" : maxReviews}
                 onChange={(e) => setMaxReviews(e.target.value === "" ? MAX_REVIEWS_DEFAULT : parseInt(e.target.value) || 0)}
-                style={{ width: "3rem", marginLeft: "0.25rem" }}
+                style={{ width: "4.5rem", display: "inline-block", marginLeft: "0.25rem" }}
                 placeholder="∞"
               />
             </label>
-            <button
-              onClick={handleFilterChange}
-              disabled={isFetching}
-              style={{
-                padding: "0.3rem 0.75rem",
-                background: isFetching ? "#333" : "#555",
-                border: "1px solid #666",
-                color: isFetching ? "#666" : "#fff",
-                cursor: isFetching ? "default" : "pointer",
-                fontSize: "0.85rem",
-              }}
-            >
-              Apply
-            </button>
-          </div>
-
-          <div style={{ overflowX: "auto" }}>
-          <table
-            style={{
-              width: "100%",
-              minWidth: 640,
-              borderCollapse: "collapse",
-              fontSize: "0.9rem",
-              tableLayout: "fixed",
-            }}
-          >
-            <colgroup>
-              <col style={{ width: "12%" }} />
-              <col style={{ width: "12%" }} />
-              <col style={{ width: "28%" }} />
-              <col style={{ width: "26%" }} />
-              <col style={{ width: "10%" }} />
-              <col style={{ width: "12%" }} />
-            </colgroup>
-            <thead>
-              <tr style={{ borderBottom: "1px solid #ccc" }}>
-                <th style={{ textAlign: "left", padding: "0.5rem 0.75rem" }}>
-                  <button
-                    onClick={() => handleSortClick("devanagari")}
-                    disabled={isFetching}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      cursor: isFetching ? "default" : "pointer",
-                      color: sortColumn === "devanagari" ? "#fff" : "#aaa",
-                      fontSize: "0.9rem",
-                      padding: 0,
-                      opacity: isFetching ? 0.5 : 1,
-                    }}
-                  >
-                    Devanagari {sortColumn === "devanagari" && (sortDirection === "desc" ? "↓" : "↑")}
-                  </button>
-                </th>
-                <th style={{ textAlign: "left", padding: "0.5rem 0.75rem" }}>
-                  <button
-                    onClick={() => handleSortClick("romanized")}
-                    disabled={isFetching}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      cursor: isFetching ? "default" : "pointer",
-                      color: sortColumn === "romanized" ? "#fff" : "#aaa",
-                      fontSize: "0.9rem",
-                      padding: 0,
-                      opacity: isFetching ? 0.5 : 1,
-                    }}
-                  >
-                    Romanized {sortColumn === "romanized" && (sortDirection === "desc" ? "↓" : "↑")}
-                  </button>
-                </th>
-                <th style={{ textAlign: "left", padding: "0.5rem 0.75rem" }}>
-                  <button
-                    onClick={() => handleSortClick("english")}
-                    disabled={isFetching}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      cursor: isFetching ? "default" : "pointer",
-                      color: sortColumn === "english" ? "#fff" : "#aaa",
-                      fontSize: "0.9rem",
-                      padding: 0,
-                      opacity: isFetching ? 0.5 : 1,
-                    }}
-                  >
-                    Original {sortColumn === "english" && (sortDirection === "desc" ? "↓" : "↑")}
-                  </button>
-                </th>
-                <th style={{ textAlign: "left", padding: "0.5rem 0.75rem" }}>
-                  <button
-                    onClick={() => handleSortClick("override")}
-                    disabled={isFetching}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      cursor: isFetching ? "default" : "pointer",
-                      color: sortColumn === "override" ? "#fff" : "#aaa",
-                      fontSize: "0.9rem",
-                      padding: 0,
-                      opacity: isFetching ? 0.5 : 1,
-                    }}
-                  >
-                    Override {sortColumn === "override" && (sortDirection === "desc" ? "↓" : "↑")}
-                  </button>
-                </th>
-                <th style={{ textAlign: "right", padding: "0.5rem 0.75rem" }}>
-                  <button
-                    onClick={() => handleSortClick("count")}
-                    disabled={isFetching}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      cursor: isFetching ? "default" : "pointer",
-                      color: sortColumn === "count" ? "#fff" : "#aaa",
-                      fontSize: "0.9rem",
-                      padding: 0,
-                      opacity: isFetching ? 0.5 : 1,
-                    }}
-                  >
-                    Reviews {sortColumn === "count" && (sortDirection === "desc" ? "↓" : "↑")}
-                  </button>
-                </th>
-                <th style={{ textAlign: "center", padding: "0.5rem 0.75rem" }}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {words.map((word, idx) => (
-                <tr
-                  key={idx}
-                  style={{
-                    borderBottom: "1px solid #eee",
-                    backgroundColor: highlightedId === word.sentence_word_id ? "rgba(30, 144, 255, 0.22)" : undefined,
-                    transition: "background-color 0.2s ease-out",
-                  }}
-                >
-                  <td style={{ padding: "0.5rem 0.75rem", fontFamily: "serif", fontSize: "1.3rem" }}>{word.surface_devanagari}</td>
-                  <td style={{ padding: "0.5rem 0.75rem", color: "#666", fontSize: "0.85rem" }}>
-                    {word.surface_romanized}
-                  </td>
-                  <td style={{ padding: "0.5rem 0.75rem", color: "#666", fontSize: "0.85rem" }}>
-                    {word.word_sense_definition ?? word.english_gloss}
-                  </td>
-                  <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.85rem" }}>
-                    <GlossCell
-                      word_sense_id={word.word_sense_id}
-                      word_sense_definition={word.word_sense_definition}
-                      english_gloss={word.english_gloss}
-                      note={word.note}
-                      showFallback={false}
-                    />
-                  </td>
-                  <td style={{ padding: "0.5rem 0.75rem", textAlign: "right", fontWeight: "bold" }}>
-                    {word.play_count}
-                  </td>
-                  <td style={{ padding: "0.25rem 0.5rem", textAlign: "center" }}>
-                    {word.word_audio_path && word.sentence_word_id && (
-                      <button
-                        onClick={() => {
-                          const wordId = word.sentence_word_id!;
-                          new Audio(apiUrl(`/audio/${word.word_audio_path}`)).play();
-                          setHighlightedId(wordId);
-                          fetch(apiUrl(`/api/sentences/words/${wordId}/played`), {
-                            method: "POST",
-                            credentials: "include",
-                          }).then(() => {
-                            // Give the user a couple of seconds to hear the
-                            // audio and see the highlighted row before the
-                            // updated play count re-sorts it out of view.
-                            // https://github.com/brantmerrell/hi/issues/9
-                            setTimeout(() => {
-                              fetch(apiUrl(`/api/stats/words?limit=${LIMIT}&offset=${offset}&min_reviews=${appliedMinReviews}&max_reviews=${appliedMaxReviews}&sort_by=${sortColumn}&sort_order=${sortDirection}`), { credentials: "include" })
-                                .then((r) => (r.ok ? r.json() : null))
-                                .then((data) => {
-                                  if (data) {
-                                    setWords(data.words || []);
-                                    setSummary(data.summary || { count: 0, mean: 0, min: 0, max: 0 });
-                                  }
-                                  setHighlightedId((current) => (current === wordId ? null : current));
-                                });
-                            }, 2000);
-                          });
-                        }}
-                        title="Play audio"
-                        style={{
-                          width: "2.25rem",
-                          height: "2.25rem",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          background: "#333",
-                          border: "1px solid #555",
-                          borderRadius: "0.25rem",
-                          cursor: "pointer",
-                          padding: 0,
-                          fontSize: "1rem",
-                          color: "#eee",
-                          lineHeight: 1,
-                        }}
-                      >
-                        ▶
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
-
-          <div style={{ marginTop: "1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.9rem" }}>
-            <div style={{ color: "#888" }}>
-              {summary.count > 0 && `Showing ${offset + 1}–${Math.min(offset + LIMIT, summary.count)} of ${summary.count}`}
+            <div className="control">
+              <button
+                className="button is-small is-link ml-2"
+                onClick={handleFilterChange}
+                disabled={isFetching}
+              >
+                Apply
+              </button>
             </div>
-            <div style={{ display: "flex", gap: "0.5rem" }}>
-              <button
-                onClick={() => setOffset(Math.max(0, offset - LIMIT))}
-                disabled={offset === 0 || isFetching}
-                style={{
-                  padding: "0.3rem 0.75rem",
-                  background: offset === 0 || isFetching ? "#333" : "#555",
-                  border: "1px solid #666",
-                  color: offset === 0 || isFetching ? "#666" : "#fff",
-                  cursor: offset === 0 || isFetching ? "default" : "pointer",
-                  fontSize: "0.85rem",
-                }}
-              >
-                ← Previous
-              </button>
-              <button
-                onClick={() => setOffset(offset + LIMIT)}
-                disabled={offset + LIMIT >= summary.count || isFetching}
-                style={{
-                  padding: "0.3rem 0.75rem",
-                  background: offset + LIMIT >= summary.count || isFetching ? "#333" : "#555",
-                  border: "1px solid #666",
-                  color: offset + LIMIT >= summary.count || isFetching ? "#666" : "#fff",
-                  cursor: offset + LIMIT >= summary.count || isFetching ? "default" : "pointer",
-                  fontSize: "0.85rem",
-                }}
-              >
-                Next →
-              </button>
+          </div>
+
+          <div className="table-container">
+            <table className="table is-fullwidth is-hoverable" style={{ minWidth: 640, tableLayout: "fixed" }}>
+              <colgroup>
+                <col style={{ width: "12%" }} />
+                <col style={{ width: "12%" }} />
+                <col style={{ width: "28%" }} />
+                <col style={{ width: "26%" }} />
+                <col style={{ width: "10%" }} />
+                <col style={{ width: "12%" }} />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>
+                    <button
+                      className={`button is-text is-small p-0 ${sortColumn === "devanagari" ? "has-text-link" : "has-text-grey"}`}
+                      onClick={() => handleSortClick("devanagari")}
+                      disabled={isFetching}
+                      style={{ opacity: isFetching ? 0.5 : 1 }}
+                    >
+                      Devanagari{sortIndicator("devanagari")}
+                    </button>
+                  </th>
+                  <th>
+                    <button
+                      className={`button is-text is-small p-0 ${sortColumn === "romanized" ? "has-text-link" : "has-text-grey"}`}
+                      onClick={() => handleSortClick("romanized")}
+                      disabled={isFetching}
+                      style={{ opacity: isFetching ? 0.5 : 1 }}
+                    >
+                      Romanized{sortIndicator("romanized")}
+                    </button>
+                  </th>
+                  <th>
+                    <button
+                      className={`button is-text is-small p-0 ${sortColumn === "english" ? "has-text-link" : "has-text-grey"}`}
+                      onClick={() => handleSortClick("english")}
+                      disabled={isFetching}
+                      style={{ opacity: isFetching ? 0.5 : 1 }}
+                    >
+                      Original{sortIndicator("english")}
+                    </button>
+                  </th>
+                  <th>
+                    <button
+                      className={`button is-text is-small p-0 ${sortColumn === "override" ? "has-text-link" : "has-text-grey"}`}
+                      onClick={() => handleSortClick("override")}
+                      disabled={isFetching}
+                      style={{ opacity: isFetching ? 0.5 : 1 }}
+                    >
+                      Override{sortIndicator("override")}
+                    </button>
+                  </th>
+                  <th className="has-text-right">
+                    <button
+                      className={`button is-text is-small p-0 ${sortColumn === "count" ? "has-text-link" : "has-text-grey"}`}
+                      onClick={() => handleSortClick("count")}
+                      disabled={isFetching}
+                      style={{ opacity: isFetching ? 0.5 : 1 }}
+                    >
+                      Reviews{sortIndicator("count")}
+                    </button>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {words.map((word, idx) => (
+                  <tr
+                    key={idx}
+                    style={{
+                      backgroundColor: highlightedId === word.sentence_word_id ? "rgba(30, 144, 255, 0.22)" : undefined,
+                      transition: "background-color 0.2s ease-out",
+                    }}
+                  >
+                    <td className="devanagari" style={{ fontSize: "1.2rem" }}>{word.surface_devanagari}</td>
+                    <td className="has-text-grey is-size-7">{word.surface_romanized}</td>
+                    <td className="has-text-grey is-size-7">
+                      {word.word_sense_definition ?? word.english_gloss}
+                    </td>
+                    <td className="is-size-7">
+                      <GlossCell
+                        word_sense_id={word.word_sense_id}
+                        word_sense_definition={word.word_sense_definition}
+                        english_gloss={word.english_gloss}
+                        note={word.note}
+                        showFallback={false}
+                      />
+                    </td>
+                    <td className="has-text-right has-text-weight-bold">
+                      {word.play_count}
+                    </td>
+                    <td className="has-text-centered">
+                      {word.word_audio_path && word.sentence_word_id && (
+                        <button
+                          className="button is-small"
+                          onClick={() => {
+                            const wordId = word.sentence_word_id!;
+                            new Audio(apiUrl(`/audio/${word.word_audio_path}`)).play();
+                            setHighlightedId(wordId);
+                            fetch(apiUrl(`/api/sentences/words/${wordId}/played`), {
+                              method: "POST",
+                              credentials: "include",
+                            }).then(() => {
+                              // Give the user a couple of seconds to hear the
+                              // audio and see the highlighted row before the
+                              // updated play count re-sorts it out of view.
+                              // https://github.com/brantmerrell/hi/issues/9
+                              setTimeout(() => {
+                                fetch(apiUrl(`/api/stats/words?limit=${LIMIT}&offset=${offset}&min_reviews=${appliedMinReviews}&max_reviews=${appliedMaxReviews}&sort_by=${sortColumn}&sort_order=${sortDirection}`), { credentials: "include" })
+                                  .then((r) => (r.ok ? r.json() : null))
+                                  .then((data) => {
+                                    if (data) {
+                                      setWords(data.words || []);
+                                      setSummary(data.summary || { count: 0, mean: 0, min: 0, max: 0 });
+                                    }
+                                    setHighlightedId((current) => (current === wordId ? null : current));
+                                  });
+                              }, 2000);
+                            });
+                          }}
+                          title="Play audio"
+                        >
+                          ▶
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="level mt-5">
+            <div className="level-left">
+              <p className="is-size-7 has-text-grey">
+                {summary.count > 0 && `Showing ${offset + 1}–${Math.min(offset + LIMIT, summary.count)} of ${summary.count}`}
+              </p>
+            </div>
+            <div className="level-right">
+              <div className="field is-grouped">
+                <div className="control">
+                  <button
+                    className="button is-small"
+                    onClick={() => setOffset(Math.max(0, offset - LIMIT))}
+                    disabled={offset === 0 || isFetching}
+                  >
+                    ← Previous
+                  </button>
+                </div>
+                <div className="control">
+                  <button
+                    className="button is-small"
+                    onClick={() => setOffset(offset + LIMIT)}
+                    disabled={offset + LIMIT >= summary.count || isFetching}
+                  >
+                    Next →
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </>
