@@ -12,7 +12,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import Auth from "./pages/Auth";
 import Reader from "./pages/Reader";
-import Stats from "./pages/Stats";
+import Words from "./pages/Words";
 
 function App() {
   return (
@@ -20,7 +20,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/auth" element={<Auth />} />
-          <Route path="/words" element={<Stats />} />
+          <Route path="/words" element={<Words />} />
           <Route path="/:storyNum/:sentenceNum" element={<Reader />} />
           <Route path="/:storyNum" element={<Reader />} />
           <Route path="/" element={<Reader />} />

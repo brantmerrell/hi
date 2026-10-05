@@ -19,7 +19,7 @@ interface WordStat {
 type SortColumn = "devanagari" | "romanized" | "english" | "override" | "count";
 type SortDirection = "asc" | "desc";
 
-export default function Stats() {
+export default function Words() {
   const { user } = useAuth();
   const [words, setWords] = useState<WordStat[]>([]);
   const [loading, setLoading] = useState(true);
