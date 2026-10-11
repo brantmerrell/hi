@@ -8,6 +8,7 @@ export interface SentenceWord {
   word_sense_id: string | null;
   note: string | null;
   word_audio_path: string | null;
+  start_ms: number | null;
 }
 
 export interface Sentence {

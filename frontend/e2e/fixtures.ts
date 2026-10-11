@@ -21,6 +21,7 @@ export function makeWord(overrides: Partial<Record<string, unknown>> = {}) {
     word_sense_id: "sense-1",
     note: null,
     word_audio_path: null,
+    start_ms: null,
     ...overrides,
   };
 }

@@ -19,6 +19,7 @@ class SentenceWordOut(BaseModel):
     word_sense_id: Optional[uuid.UUID] = None
     note: Optional[str] = None
     word_audio_path: Optional[str] = None
+    start_ms: Optional[int] = None
 
 
 # ── Sentence-level ────────────────────────────────────────────────────────────

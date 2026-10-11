@@ -5,7 +5,14 @@ Usage:
     python generate_audio.py
 
 Pass 1: Sentences — processes all sentences that have no audio_path. Saves MP3s
-to data/audio/<story_id>/<seq>.mp3 and updates sentences.audio_path.
+to data/audio/<story_id>/<seq>.mp3 and updates sentences.audio_path. Each word is
+preceded by an SSML <mark>, and Google's timepoints for those marks are stored in
+sentence_words.start_ms so the app can highlight the word being spoken.
+
+    python generate_audio.py --retime
+
+also re-synthesizes sentences that already have audio but whose words have no
+start_ms (backfill for audio generated before word timing existed).
 
 Pass 2: Words — deduplicates by surface_devanagari (one TTS call per unique word
 form), saves MP3s to data/audio/words/<md5>.mp3, and updates
@@ -21,12 +28,14 @@ word_audio_path.
 Requires environment variables: DATABASE_URL, GOOGLE_CLOUD_API_KEY
 """
 
+import argparse
 import base64
 import hashlib
 import os
 import sys
 import time
 from pathlib import Path
+from xml.sax.saxutils import escape
 
 import psycopg2
 import requests
@@ -35,6 +44,8 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent.parent / "backend" / ".env")
 
 TTS_URL = "https://texttospeech.googleapis.com/v1/text:synthesize"
+# SSML mark timepoints are only available on the v1beta1 endpoint
+TTS_BETA_URL = "https://texttospeech.googleapis.com/v1beta1/text:synthesize"
 AUDIO_DIR = Path(__file__).parent.parent / "data" / "audio"
 VOICE = "hi-IN-Wavenet-D"
 LANGUAGE = "hi-IN"
@@ -59,12 +70,73 @@ def synthesize(text: str, api_key: str) -> bytes:
     return base64.b64decode(audio_b64)
 
 
+def build_ssml(sentence: str, surfaces: list[str]) -> tuple[str, list[int]]:
+    """
+    Wrap a sentence in SSML with a <mark name="w{i}"/> before each word.
+
+    `surfaces` are the sentence's words in order. The original text (including
+    punctuation) is preserved so prosody is unchanged. Returns the SSML and the
+    indexes of the words that were found and marked.
+    """
+    parts = []
+    marked = []
+    cursor = 0
+    for i, surface in enumerate(surfaces):
+        idx = sentence.find(surface, cursor)
+        if idx == -1:
+            continue
+        parts.append(escape(sentence[cursor:idx]))
+        parts.append(f'<mark name="w{i}"/>')
+        parts.append(escape(surface))
+        marked.append(i)
+        cursor = idx + len(surface)
+    parts.append(escape(sentence[cursor:]))
+    return f"<speak>{''.join(parts)}</speak>", marked
+
+
+def parse_timepoints(timepoints: list[dict]) -> dict[int, int]:
+    """Map word index -> start offset in milliseconds from TTS timepoints."""
+    result = {}
+    for tp in timepoints:
+        name = tp.get("markName", "")
+        if name.startswith("w") and name[1:].isdigit():
+            result[int(name[1:])] = round(tp["timeSeconds"] * 1000)
+    return result
+
+
+def synthesize_with_timepoints(sentence: str, surfaces: list[str], api_key: str) -> tuple[bytes, dict[int, int]]:
+    """Synthesize a sentence and return (MP3 bytes, {word index: start_ms})."""
+    ssml, _ = build_ssml(sentence, surfaces)
+    response = requests.post(
+        TTS_BETA_URL,
+        params={"key": api_key},
+        json={
+            "input": {"ssml": ssml},
+            "voice": {"languageCode": LANGUAGE, "name": VOICE},
+            "audioConfig": {"audioEncoding": "MP3"},
+            "enableTimePointing": ["SSML_MARK"],
+        },
+        timeout=30,
+    )
+    response.raise_for_status()
+    body = response.json()
+    return base64.b64decode(body["audioContent"]), parse_timepoints(body.get("timepoints", []))
+
+
 def get_connection(database_url: str):
     url = database_url.replace("postgresql+asyncpg://", "postgresql://")
     return psycopg2.connect(url)
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Generate sentence and word audio.")
+    parser.add_argument(
+        "--retime",
+        action="store_true",
+        help="Also regenerate sentence audio whose words have no start_ms",
+    )
+    args = parser.parse_args()
+
     database_url = os.environ.get("DATABASE_URL")
     api_key = os.environ.get("GOOGLE_CLOUD_API_KEY")
 
@@ -78,10 +150,16 @@ def main() -> None:
     conn = get_connection(database_url)
     cur = conn.cursor()
 
-    cur.execute("""
+    needs_audio = "audio_path IS NULL"
+    if args.retime:
+        needs_audio += (
+            " OR EXISTS (SELECT 1 FROM sentence_words w"
+            " WHERE w.sentence_id = sentences.id AND w.start_ms IS NULL)"
+        )
+    cur.execute(f"""
         SELECT id, story_id, sequence_num, devanagari
         FROM sentences
-        WHERE audio_path IS NULL
+        WHERE {needs_audio}
         ORDER BY story_id, sequence_num
     """)
     rows = cur.fetchall()
@@ -98,13 +176,26 @@ def main() -> None:
 
         print(f"  [{i + 1}/{len(rows)}] sentence {seq_num}: {devanagari[:50]}...")
 
+        cur.execute(
+            "SELECT id, surface_devanagari FROM sentence_words WHERE sentence_id = %s ORDER BY position",
+            (str(sentence_id),),
+        )
+        word_rows = cur.fetchall()
+
         try:
-            mp3_bytes = synthesize(devanagari, api_key)
+            mp3_bytes, starts = synthesize_with_timepoints(
+                devanagari, [surface for _, surface in word_rows], api_key
+            )
         except Exception as e:
             print(f"    TTS error, skipping: {e}")
             continue
 
         out_path.write_bytes(mp3_bytes)
+        for i, (word_id, _) in enumerate(word_rows):
+            cur.execute(
+                "UPDATE sentence_words SET start_ms = %s WHERE id = %s",
+                (starts.get(i), str(word_id)),
+            )
 
         # Store path relative to data/audio/ so it's location-independent
         relative_path = f"{story_id}/{seq_num}.mp3"

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { makeSentence, mockReaderApi, story } from "./fixtures";
+import { makeSentence, makeWord, mockReaderApi, story } from "./fixtures";
 
 test("reader shows a sentence and navigates forward", async ({ page }) => {
   const sentences = [
@@ -50,4 +50,32 @@ test("sidebar lists authors and expands to their stories", async ({ page }) => {
   await nav.getByRole("button", { name: /Other Author/ }).click();
   await nav.getByRole("link", { name: /Other/ }).click();
   await expect(page).toHaveURL(/\/other-author\/0/);
+});
+
+test("the word being spoken is highlighted as the sentence audio plays", async ({ page }) => {
+  const words = [
+    makeWord({ id: "w1", position: 0, surface_devanagari: "यह", start_ms: 0 }),
+    makeWord({ id: "w2", position: 1, surface_devanagari: "वाक्य", start_ms: 800 }),
+  ];
+  await mockReaderApi(page, { sentences: [makeSentence({ audio_path: "s.mp3", words })] });
+  await page.route("**/audio/**", (route) => route.fulfill({ body: "", contentType: "audio/mpeg" }));
+
+  await page.goto("/");
+  const first = page.locator('[data-active]', { hasText: "यह" });
+  const second = page.locator('[data-active]', { hasText: "वाक्य" });
+  await expect(first).toHaveAttribute("data-active", "false");
+
+  const seek = (seconds: number) =>
+    page.locator("audio").evaluate((el: HTMLAudioElement, t) => {
+      Object.defineProperty(el, "currentTime", { value: t, configurable: true });
+      el.dispatchEvent(new Event("timeupdate"));
+    }, seconds);
+
+  await seek(0.1);
+  await expect(first).toHaveAttribute("data-active", "true");
+  await expect(second).toHaveAttribute("data-active", "false");
+
+  await seek(0.9);
+  await expect(first).toHaveAttribute("data-active", "false");
+  await expect(second).toHaveAttribute("data-active", "true");
 });

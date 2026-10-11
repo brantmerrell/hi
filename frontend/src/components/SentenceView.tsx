@@ -4,6 +4,7 @@ import GlossCell from "./GlossCell";
 
 interface Props {
   sentence: Sentence;
+  activeWordId?: string | null;
 }
 
 function playWordAudio(path: string, wordId: string | null) {
@@ -16,7 +17,7 @@ function playWordAudio(path: string, wordId: string | null) {
   }
 }
 
-export default function SentenceView({ sentence }: Props) {
+export default function SentenceView({ sentence, activeWordId }: Props) {
   return (
     <div>
       <div className="mb-4">
@@ -25,7 +26,17 @@ export default function SentenceView({ sentence }: Props) {
         </p>
         <div className="is-flex is-flex-wrap-wrap" style={{ gap: "0.25rem 1rem" }}>
           {(sentence.words ?? []).map((w) => (
-            <div key={w.id} className="has-text-centered" style={{ minWidth: "2rem" }}>
+            <div
+              key={w.id}
+              className="has-text-centered"
+              data-active={w.id === activeWordId}
+              style={{
+                minWidth: "2rem",
+                borderRadius: 4,
+                backgroundColor: w.id === activeWordId ? "rgba(30, 144, 255, 0.22)" : undefined,
+                transition: "background-color 0.1s ease-out",
+              }}
+            >
               <div className="devanagari" style={{ fontSize: "1.1rem" }}>
                 {w.surface_devanagari}
               </div>

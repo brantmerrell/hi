@@ -30,6 +30,7 @@ export default function Reader() {
   const [index, setIndex] = useState(0);
   const [showGloss, setShowGloss] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeWordId, setActiveWordId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const wordCache = useRef<Map<string, Sentence>>(new Map());
@@ -195,6 +196,7 @@ export default function Reader() {
   }, [index]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function goTo(newIdx: number) {
+    setActiveWordId(null);
     const s = sentences[newIdx];
     if (s && currentStory) navigate(`/${currentStory.author_slug}/${currentStory.position ?? storyNumStr ?? 0}/${s.sequence_num + 1}`);
   }
@@ -263,7 +265,7 @@ export default function Reader() {
         </header>
       )}
 
-      {detail && !showGloss && <SentenceView sentence={detail} />}
+      {detail && !showGloss && <SentenceView sentence={detail} activeWordId={activeWordId} />}
       {sentence && !detail && !showGloss && (
         <p className="is-size-7 has-text-grey">Loading…</p>
       )}
@@ -277,9 +279,15 @@ export default function Reader() {
         </button>
       </div>
 
-      {showGloss && detail && <WordGloss words={detail.words ?? []} />}
+      {showGloss && detail && <WordGloss words={detail.words ?? []} activeWordId={activeWordId} />}
 
-      {sentence && <AudioPlayer audioPath={sentence.audio_path} sentenceId={sentence.id} />}
+      {sentence && <AudioPlayer
+          key={sentence.id}
+          audioPath={sentence.audio_path}
+          sentenceId={sentence.id}
+          words={detail?.words}
+          onActiveWordChange={setActiveWordId}
+        />}
 
       <Navigation
         onPrev={() => goTo(Math.max(0, index - 1))}

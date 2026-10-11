@@ -151,6 +151,7 @@ class SentenceWord(Base):
         UUID(as_uuid=True), ForeignKey("word_senses.id"), nullable=True
     )
     word_audio_path: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    start_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     sentence: Mapped["Sentence"] = relationship("Sentence", back_populates="words")
     lemma: Mapped[Optional["Lemma"]] = relationship("Lemma", back_populates="sentence_words")

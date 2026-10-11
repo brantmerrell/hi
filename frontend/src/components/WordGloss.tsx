@@ -4,6 +4,7 @@ import GlossCell from "./GlossCell";
 
 interface Props {
   words: SentenceWord[];
+  activeWordId?: string | null;
 }
 
 function playWordAudio(path: string, wordId: string | null) {
@@ -16,7 +17,7 @@ function playWordAudio(path: string, wordId: string | null) {
   }
 }
 
-export default function WordGloss({ words }: Props) {
+export default function WordGloss({ words, activeWordId }: Props) {
   return (
     <table className="table is-fullwidth mt-4">
       <thead>
@@ -29,7 +30,11 @@ export default function WordGloss({ words }: Props) {
       </thead>
       <tbody>
         {words.map((word) => (
-          <tr key={word.id}>
+          <tr
+            key={word.id}
+            data-active={word.id === activeWordId}
+            style={{ backgroundColor: word.id === activeWordId ? "rgba(30, 144, 255, 0.22)" : undefined }}
+          >
             <td>
               {word.word_audio_path && (
                 <button
