@@ -2,7 +2,10 @@
 fetch_text.py — Fetch a Premchand story from Hindi Wikisource.
 
 Usage:
-    python fetch_text.py "<Wikisource page name>"
+    python fetch_text.py "<Wikisource page name>" [--author "<name>"] [--author-slug <slug>]
+
+The author defaults to Munshi Premchand (slug: munshi-premchand). The author slug
+becomes the URL segment, so it must not be purely numeric.
 
 Example:
     python fetch_text.py "नमक का दारोग़ा"
@@ -11,6 +14,7 @@ The page name must match the Hindi Wikisource article title exactly.
 Output is saved to data/raw/<slug>.txt alongside a metadata file data/raw/<slug>.json.
 """
 
+import argparse
 import json
 import re
 import sys
@@ -112,12 +116,16 @@ def slugify(title: str) -> str:
 
 
 def main() -> None:
-    if len(sys.argv) < 2:
-        print("Usage: python fetch_text.py \"<Wikisource page title>\"")
-        print("Example: python fetch_text.py \"नमक का दारोग़ा\"")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description="Fetch a story from Hindi Wikisource.")
+    parser.add_argument("page_title", help="Hindi Wikisource page title")
+    parser.add_argument("--author", default="Munshi Premchand", help="Author name (English)")
+    parser.add_argument("--author-slug", default="munshi-premchand", help="Author URL slug")
+    parser.add_argument("--author-hi", default=None, help="Author name (Hindi)")
+    args = parser.parse_args()
+    if args.author_slug.isdigit():
+        parser.error("--author-slug must not be purely numeric")
 
-    page_title = sys.argv[1]
+    page_title = args.page_title
     slug = slugify(page_title)
 
     print(f"Fetching: {page_title}")
@@ -138,7 +146,9 @@ def main() -> None:
                 "title_hi": page_title,
                 "slug": slug,
                 "source_url": f"https://hi.wikisource.org/wiki/{page_title.replace(' ', '_')}",
-                "author": "Munshi Premchand",
+                "author": args.author,
+                "author_slug": args.author_slug,
+                "author_hi": args.author_hi,
                 "char_count": len(text),
             },
             ensure_ascii=False,

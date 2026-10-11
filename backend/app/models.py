@@ -20,25 +20,53 @@ class Base(DeclarativeBase):
     pass
 
 
-class Story(Base):
-    __tablename__ = "stories"
+class Author(Base):
+    __tablename__ = "authors"
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    position: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, unique=True)
+    # URL segment; never purely numeric, so it can't collide with legacy /{storyNum} URLs
+    slug: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    name_hi: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    name_en: Mapped[str] = mapped_column(String, nullable=False)
+
+    stories: Mapped[list["Story"]] = relationship("Story", back_populates="author_ref")
+
+
+class Story(Base):
+    __tablename__ = "stories"
+    __table_args__ = (UniqueConstraint("author_id", "position", name="uq_story_author_position"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    author_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("authors.id"), nullable=False
+    )
+    position: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     title_hi: Mapped[str] = mapped_column(String, nullable=False)
     title_en: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    author: Mapped[str] = mapped_column(String, nullable=False)
     source_url: Mapped[str] = mapped_column(String, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
+    author_ref: Mapped["Author"] = relationship(
+        "Author", back_populates="stories", lazy="joined"
+    )
     sentences: Mapped[list["Sentence"]] = relationship(
         "Sentence", back_populates="story", order_by="Sentence.sequence_num"
     )
     bookmarks: Mapped[list["Bookmark"]] = relationship("Bookmark", back_populates="story")
+
+    @property
+    def author(self) -> str:
+        return self.author_ref.name_en
+
+    @property
+    def author_slug(self) -> str:
+        return self.author_ref.slug
 
 
 class Sentence(Base):

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import AudioPlayer from "../components/AudioPlayer";
 import Navigation from "../components/Navigation";
+import StorySidebar from "../components/StorySidebar";
 import SentenceView from "../components/SentenceView";
 import WordGloss from "../components/WordGloss";
 import { useAuth } from "../context/AuthContext";
@@ -9,19 +10,26 @@ import { apiUrl } from "../api";
 import type { Sentence, Story } from "../types";
 
 interface Bookmark {
+  author_slug: string;
   story_position: number | null;
   sentence_seq_num: number;
 }
 
 export default function Reader() {
   const { user, setUser } = useAuth();
-  const { storyNum: storyNumStr, sentenceNum: sentenceNumStr } = useParams<{ storyNum?: string; sentenceNum?: string }>();
+  const params = useParams<{ authorSlug?: string; storyNum?: string; sentenceNum?: string }>();
+  // Legacy URLs were /:storyNum/:sentenceNum; a numeric first segment can't be an author slug
+  const isLegacyUrl = params.authorSlug !== undefined && /^\d+$/.test(params.authorSlug);
+  const authorSlug = isLegacyUrl ? undefined : params.authorSlug;
+  const storyNumStr = isLegacyUrl ? params.authorSlug : params.storyNum;
+  const sentenceNumStr = isLegacyUrl ? params.storyNum : params.sentenceNum;
   const navigate = useNavigate();
   const [stories, setStories] = useState<Story[]>([]);
   const [currentStory, setCurrentStory] = useState<Story | null>(null);
   const [sentences, setSentences] = useState<Sentence[]>([]);
   const [index, setIndex] = useState(0);
   const [showGloss, setShowGloss] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const wordCache = useRef<Map<string, Sentence>>(new Map());
@@ -54,7 +62,12 @@ export default function Reader() {
     if (!stories.length) return;
 
     const storyPos = storyNumStr ? parseInt(storyNumStr) : null;
-    const story = storyPos !== null ? (stories.find((s) => s.position === storyPos) ?? null) : null;
+    const legacyAuthorSlug = isLegacyUrl ? stories[0].author_slug : null;
+    const effectiveAuthor = authorSlug ?? legacyAuthorSlug;
+    const story =
+      storyPos !== null && effectiveAuthor
+        ? (stories.find((s) => s.author_slug === effectiveAuthor && s.position === storyPos) ?? null)
+        : null;
 
     async function loadSentences() {
       try {
@@ -62,14 +75,35 @@ export default function Reader() {
         const bmRes = await fetch(apiUrl("/api/bookmarks"), { credentials: "include" });
         const bm: Bookmark | null = bmRes.ok ? await bmRes.json() : null;
 
-        // Rule: no story in URL or story position not found → redirect to bookmark or first story/sentence
+        // Rule: legacy /:storyNum[/:sentenceNum] URL → same story under the first author
+        if (isLegacyUrl && story) {
+          skipBookmarkSave.current = true;
+          navigate(`/${story.author_slug}/${story.position}/${sentenceNumStr ?? 1}`, { replace: true });
+          return;
+        }
+
+        // Rule: author only → that author's first story (bookmark's story if it belongs to them)
+        if (authorSlug && !storyNumStr) {
+          const authorStories = stories.filter((s) => s.author_slug === authorSlug);
+          if (authorStories.length) {
+            skipBookmarkSave.current = true;
+            if (bm && bm.author_slug === authorSlug && bm.story_position !== null) {
+              navigate(`/${authorSlug}/${bm.story_position}/${bm.sentence_seq_num + 1}`, { replace: true });
+            } else {
+              navigate(`/${authorSlug}/${authorStories[0].position ?? 0}/1`, { replace: true });
+            }
+            return;
+          }
+        }
+
+        // Rule: no story in URL or story not found → redirect to bookmark or first story/sentence
         if (!storyNumStr || !story) {
           skipBookmarkSave.current = true;
           if (bm && bm.story_position !== null) {
-            navigate(`/${bm.story_position}/${bm.sentence_seq_num + 1}`, { replace: true });
+            navigate(`/${bm.author_slug}/${bm.story_position}/${bm.sentence_seq_num + 1}`, { replace: true });
           } else {
             const fallback = stories[0];
-            navigate(`/${fallback.position ?? 0}/1`, { replace: true });
+            navigate(`/${fallback.author_slug}/${fallback.position ?? 0}/1`, { replace: true });
           }
           return;
         }
@@ -87,9 +121,12 @@ export default function Reader() {
         if (!sentenceNumStr) {
           // Rule: story exists, no sentence → use bookmark if same story, else first sentence
           skipBookmarkSave.current = true;
-          const bmSeq = bm && bm.story_position === storyPos ? bm.sentence_seq_num : null;
+          const bmSeq =
+            bm && bm.author_slug === story.author_slug && bm.story_position === storyPos
+              ? bm.sentence_seq_num
+              : null;
           const targetSeqNum = bmSeq !== null ? bmSeq + 1 : 1;
-          navigate(`/${storyPos}/${targetSeqNum}`, { replace: true });
+          navigate(`/${story.author_slug}/${storyPos}/${targetSeqNum}`, { replace: true });
           return;
         }
 
@@ -99,7 +136,7 @@ export default function Reader() {
         if (idx === -1) {
           // Rule: sentence doesn't exist → redirect to first sentence of story
           skipBookmarkSave.current = true;
-          navigate(`/${storyPos}/1`, { replace: true });
+          navigate(`/${story.author_slug}/${storyPos}/1`, { replace: true });
           return;
         }
         // Valid — index will be set by the sync effect below
@@ -110,7 +147,7 @@ export default function Reader() {
       }
     }
     loadSentences();
-  }, [stories, storyNumStr]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [stories, authorSlug, storyNumStr]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync index from URL params whenever params or sentences change
   // sentenceNum in URL is 1-based; sequence_num in DB is 0-based
@@ -159,7 +196,7 @@ export default function Reader() {
 
   function goTo(newIdx: number) {
     const s = sentences[newIdx];
-    if (s) navigate(`/${currentStory?.position ?? storyNumStr ?? 0}/${s.sequence_num + 1}`);
+    if (s && currentStory) navigate(`/${currentStory.author_slug}/${currentStory.position ?? storyNumStr ?? 0}/${s.sequence_num + 1}`);
   }
 
   if (loading) return <main className="container is-max-desktop py-6 px-4"><p>Loading...</p></main>;
@@ -169,7 +206,21 @@ export default function Reader() {
   const detail = currentDetail?.id === sentence?.id ? currentDetail : null;
 
   return (
-    <main className="container is-max-desktop py-6 px-4">
+    <div className="container py-6 px-4">
+    <div className="columns">
+    <aside className="column is-3">
+      <button
+        className="button is-small is-hidden-tablet mb-3"
+        aria-expanded={sidebarOpen}
+        onClick={() => setSidebarOpen((o) => !o)}
+      >
+        ☰ Stories
+      </button>
+      <div className={sidebarOpen ? undefined : "is-hidden-mobile"}>
+        <StorySidebar stories={stories} currentStory={currentStory} />
+      </div>
+    </aside>
+    <main className="column is-max-desktop">
       <div className="has-text-right is-size-7 has-text-grey mb-2">
         {user ? (
           <>
@@ -237,5 +288,7 @@ export default function Reader() {
         hasNext={index < sentences.length - 1}
       />
     </main>
+    </div>
+    </div>
   );
 }

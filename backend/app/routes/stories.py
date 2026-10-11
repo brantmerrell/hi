@@ -6,17 +6,23 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import Sentence, Story
+from app.models import Author, Sentence, Story
 from app.schemas import SentenceListOut, StoryOut
 
 router = APIRouter()
 
 
 @router.get("", response_model=list[StoryOut])
-async def list_stories(db: AsyncSession = Depends(get_db)) -> list[Story]:
-    """Return all stories ordered by creation date (newest first)."""
+async def list_stories(
+    author: Annotated[str | None, Query(description="Filter by author slug")] = None,
+    db: AsyncSession = Depends(get_db),
+) -> list[Story]:
+    """Return stories ordered by author slug, then position."""
+    query = select(Story).join(Author, Author.id == Story.author_id)
+    if author is not None:
+        query = query.where(Author.slug == author)
     result = await db.execute(
-        select(Story).order_by(Story.position.asc().nulls_last(), Story.created_at.asc())
+        query.order_by(Author.slug.asc(), Story.position.asc().nulls_last(), Story.created_at.asc())
     )
     return list(result.scalars().all())
 

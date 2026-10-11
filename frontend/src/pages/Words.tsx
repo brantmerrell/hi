@@ -46,8 +46,10 @@ export default function Words() {
     setOffset(0); // Reset to first page when filters change
   }
 
+  const userId = user?.id;
+
   useEffect(() => {
-    if (!user) {
+    if (!userId) {
       setLoading(false);
       return;
     }
@@ -69,7 +71,7 @@ export default function Words() {
     }
 
     load();
-  }, [user, statsUrl]);
+  }, [userId, statsUrl]);
 
   function handlePlay(word: WordStat) {
     const wordId = word.sentence_word_id!;

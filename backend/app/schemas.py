@@ -60,6 +60,7 @@ class StoryOut(BaseModel):
     title_hi: str
     title_en: Optional[str] = None
     author: str
+    author_slug: str
     source_url: str
 
 
@@ -93,6 +94,7 @@ class BookmarkIn(BaseModel):
 
 class BookmarkOut(BaseModel):
     story_id: uuid.UUID
+    author_slug: str
     story_position: Optional[int]
     sentence_id: uuid.UUID
     sentence_seq_num: int

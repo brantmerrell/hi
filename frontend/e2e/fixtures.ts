@@ -6,6 +6,8 @@ export const story = {
   title_hi: "कहानी",
   title_en: "The Story",
   author: "Test Author",
+  author_slug: "test-author",
+  source_url: "https://hi.wikisource.org/wiki/test",
 };
 
 export function makeWord(overrides: Partial<Record<string, unknown>> = {}) {
