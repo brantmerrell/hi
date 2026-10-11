@@ -60,6 +60,7 @@ class StoryOut(BaseModel):
     title_hi: str
     title_en: Optional[str] = None
     author: str
+    source_url: str
 
 
 # ── Notes ─────────────────────────────────────────────────────────────────────

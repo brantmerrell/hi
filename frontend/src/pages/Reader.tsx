@@ -204,6 +204,10 @@ export default function Reader() {
           )}
           <p className="is-size-7 has-text-grey">
             {currentStory.author} · sentence {index + 1} of {sentences.length}
+            {" · "}
+            <a href={currentStory.source_url} target="_blank" rel="noopener noreferrer">
+              source
+            </a>
           </p>
         </header>
       )}
