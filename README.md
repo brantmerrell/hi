@@ -18,8 +18,12 @@ See [PROJECT.md](./PROJECT.md) for full design rationale and architecture decisi
 
 Three services are used by the pipeline (one-time setup to populate the database):
 
-**Azure Translator** — translates sentences and produces word-level alignment. Sign up at [portal.azure.com](https://portal.azure.com), create a Translator resource, and configure:
+**Translation** — the pipeline translates sentences and words with the provider named by `TRANSLATOR` (default `google`).
+
+- `google` — Google Cloud Translation. Enable the Cloud Translation API and allow `translate.googleapis.com` on the same `GOOGLE_CLOUD_API_KEY` used for Text-to-Speech. It has no word alignment, so each word gloss is translated on its own.
+- `azure` — Azure Translator, which also returns word-level alignment:
 ```
+TRANSLATOR=azure
 AZURE_TRANSLATOR_KEY=<key>
 AZURE_TRANSLATOR_REGION=eastus
 ```
@@ -104,7 +108,11 @@ make stop  # stops the Postgres container
 
 ### 4. Pipeline (loading text content)
 
-From the `pipeline` directory with the backend `.venv` active:
+From the `pipeline` directory, using a Python 3.12 virtualenv (`aksharamukha` does not import on Python 3.14):
+
+```bash
+python3.12 -m venv .venv && .venv/bin/pip install -r requirements.txt
+```
 
 ```bash
 # Step 1 — fetch raw text from Wikisource
