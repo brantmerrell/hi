@@ -58,6 +58,9 @@ class Story(Base):
     sentences: Mapped[list["Sentence"]] = relationship(
         "Sentence", back_populates="story", order_by="Sentence.sequence_num"
     )
+    chapters: Mapped[list["Chapter"]] = relationship(
+        "Chapter", back_populates="story", order_by="Chapter.position", lazy="selectin"
+    )
     bookmarks: Mapped[list["Bookmark"]] = relationship("Bookmark", back_populates="story")
 
     @property
@@ -69,6 +72,27 @@ class Story(Base):
         return self.author_ref.slug
 
 
+class Chapter(Base):
+    __tablename__ = "chapters"
+    __table_args__ = (UniqueConstraint("story_id", "position", name="uq_chapter_story_position"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    story_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("stories.id"), nullable=False
+    )
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    title_hi: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    title_en: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    source_url: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+
+    story: Mapped["Story"] = relationship("Story", back_populates="chapters")
+    sentences: Mapped[list["Sentence"]] = relationship(
+        "Sentence", back_populates="chapter", order_by="Sentence.sequence_num"
+    )
+
+
 class Sentence(Base):
     __tablename__ = "sentences"
 
@@ -78,6 +102,10 @@ class Sentence(Base):
     story_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("stories.id"), nullable=False
     )
+    chapter_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("chapters.id"), nullable=False
+    )
+    # 0-based within the chapter
     sequence_num: Mapped[int] = mapped_column(Integer, nullable=False)
     devanagari: Mapped[str] = mapped_column(Text, nullable=False)
     romanized: Mapped[str] = mapped_column(Text, nullable=False)
@@ -85,6 +113,7 @@ class Sentence(Base):
     audio_path: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
     story: Mapped["Story"] = relationship("Story", back_populates="sentences")
+    chapter: Mapped["Chapter"] = relationship("Chapter", back_populates="sentences")
     words: Mapped[list["SentenceWord"]] = relationship(
         "SentenceWord", back_populates="sentence", order_by="SentenceWord.position"
     )

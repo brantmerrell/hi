@@ -5,7 +5,7 @@ Usage:
     python generate_audio.py
 
 Pass 1: Sentences — processes all sentences that have no audio_path. Saves MP3s
-to data/audio/<story_id>/<seq>.mp3 and updates sentences.audio_path. Each word is
+to data/audio/<chapter_id>/<seq>.mp3 and updates sentences.audio_path. Each word is
 preceded by an SSML <mark>, and Google's timepoints for those marks are stored in
 sentence_words.start_ms so the app can highlight the word being spoken.
 
@@ -157,10 +157,10 @@ def main() -> None:
             " WHERE w.sentence_id = sentences.id AND w.start_ms IS NULL)"
         )
     cur.execute(f"""
-        SELECT id, story_id, sequence_num, devanagari
+        SELECT id, chapter_id, sequence_num, devanagari
         FROM sentences
         WHERE {needs_audio}
-        ORDER BY story_id, sequence_num
+        ORDER BY chapter_id, sequence_num
     """)
     rows = cur.fetchall()
 
@@ -169,8 +169,8 @@ def main() -> None:
     else:
         print(f"Generating audio for {len(rows)} sentences...")
 
-    for i, (sentence_id, story_id, seq_num, devanagari) in enumerate(rows):
-        out_dir = AUDIO_DIR / str(story_id)
+    for i, (sentence_id, chapter_id, seq_num, devanagari) in enumerate(rows):
+        out_dir = AUDIO_DIR / str(chapter_id)
         out_dir.mkdir(parents=True, exist_ok=True)
         out_path = out_dir / f"{seq_num}.mp3"
 
@@ -198,7 +198,7 @@ def main() -> None:
             )
 
         # Store path relative to data/audio/ so it's location-independent
-        relative_path = f"{story_id}/{seq_num}.mp3"
+        relative_path = f"{chapter_id}/{seq_num}.mp3"
         cur.execute(
             "UPDATE sentences SET audio_path = %s WHERE id = %s",
             (relative_path, str(sentence_id)),

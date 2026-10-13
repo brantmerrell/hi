@@ -53,6 +53,16 @@ class SentenceOut(BaseModel):
 
 # ── Story-level ───────────────────────────────────────────────────────────────
 
+class ChapterOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    position: int
+    title_hi: Optional[str] = None
+    title_en: Optional[str] = None
+    source_url: Optional[str] = None
+
+
 class StoryOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -63,6 +73,7 @@ class StoryOut(BaseModel):
     author: str
     author_slug: str
     source_url: str
+    chapters: list[ChapterOut] = []
 
 
 # ── Notes ─────────────────────────────────────────────────────────────────────
@@ -97,6 +108,7 @@ class BookmarkOut(BaseModel):
     story_id: uuid.UUID
     author_slug: str
     story_position: Optional[int]
+    chapter_position: int
     sentence_id: uuid.UUID
     sentence_seq_num: int
     updated_at: datetime

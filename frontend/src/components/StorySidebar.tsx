@@ -5,6 +5,7 @@ import type { Story } from "../types";
 interface Props {
   stories: Story[];
   currentStory: Story | null;
+  currentChapterId?: string;
 }
 
 interface AuthorGroup {
@@ -27,7 +28,7 @@ function groupByAuthor(stories: Story[]): AuthorGroup[] {
   return [...groups.values()];
 }
 
-export default function StorySidebar({ stories, currentStory }: Props) {
+export default function StorySidebar({ stories, currentStory, currentChapterId }: Props) {
   const [toggled, setToggled] = useState<Set<string>>(new Set());
   const currentSlug = currentStory?.author_slug;
 
@@ -74,6 +75,22 @@ export default function StorySidebar({ stories, currentStory }: Props) {
                           <span className="is-size-7 has-text-grey-light is-block">{story.title_en}</span>
                         )}
                       </Link>
+                      {story.id === currentStory?.id && story.chapters.length > 1 && (
+                        <ul>
+                          {story.chapters.map((chapter) => (
+                            <li key={chapter.id}>
+                              <Link
+                                to={`/${story.author_slug}/${story.position ?? 0}/${chapter.position}`}
+                                className={chapter.id === currentChapterId ? "is-active" : undefined}
+                              >
+                                <span className="devanagari">
+                                  {chapter.title_hi ?? chapter.title_en ?? `Chapter ${chapter.position}`}
+                                </span>
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </li>
                   ))}
                 </ul>

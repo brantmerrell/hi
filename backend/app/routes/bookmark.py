@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import Author, Bookmark, Sentence, Story, User
+from app.models import Author, Bookmark, Chapter, Sentence, Story, User
 from app.routes.auth import get_current_user
 from app.schemas import BookmarkIn, BookmarkOut
 
@@ -14,10 +14,11 @@ router = APIRouter()
 
 async def _bookmark_out(bookmark: Bookmark, db: AsyncSession) -> BookmarkOut:
     result = await db.execute(
-        select(Author.slug, Story.position, Sentence.sequence_num)
+        select(Author.slug, Story.position, Chapter.position.label("chapter_position"), Sentence.sequence_num)
         .select_from(Sentence)
         .join(Story, Story.id == bookmark.story_id)
         .join(Author, Author.id == Story.author_id)
+        .join(Chapter, Chapter.id == Sentence.chapter_id)
         .where(Sentence.id == bookmark.sentence_id)
     )
     row = result.first()
@@ -27,6 +28,7 @@ async def _bookmark_out(bookmark: Bookmark, db: AsyncSession) -> BookmarkOut:
         story_id=bookmark.story_id,
         author_slug=row.slug,
         story_position=row.position,
+        chapter_position=row.chapter_position,
         sentence_id=bookmark.sentence_id,
         sentence_seq_num=row.sequence_num,
         updated_at=bookmark.updated_at,

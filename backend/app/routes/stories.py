@@ -30,21 +30,19 @@ async def list_stories(
 @router.get("/{story_id}/sentences", response_model=list[SentenceListOut])
 async def list_story_sentences(
     story_id: uuid.UUID,
+    chapter_id: Annotated[uuid.UUID | None, Query(description="Only this chapter's sentences")] = None,
     limit: Annotated[int, Query(ge=1, le=500)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
     db: AsyncSession = Depends(get_db),
 ) -> list[Sentence]:
-    """Return paginated sentences for a story, each with their word alignments."""
+    """Return paginated sentences for a story (optionally one chapter), each with word alignments."""
     # Verify story exists
     story = await db.get(Story, story_id)
     if story is None:
         raise HTTPException(status_code=404, detail="Story not found")
 
-    result = await db.execute(
-        select(Sentence)
-        .where(Sentence.story_id == story_id)
-        .order_by(Sentence.sequence_num)
-        .offset(offset)
-        .limit(limit)
-    )
+    query = select(Sentence).where(Sentence.story_id == story_id)
+    if chapter_id is not None:
+        query = query.where(Sentence.chapter_id == chapter_id)
+    result = await db.execute(query.order_by(Sentence.sequence_num).offset(offset).limit(limit))
     return list(result.scalars().all())

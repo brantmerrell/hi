@@ -23,7 +23,8 @@ function App() {
         <Routes>
           <Route path="/auth" element={<Auth />} />
           <Route path="/words" element={<Words />} />
-          <Route path="/:authorSlug/:storyNum/:sentenceNum" element={<Reader />} />
+          <Route path="/:authorSlug/:storyNum/:chapterNum/:sentenceNum" element={<Reader />} />
+          <Route path="/:authorSlug/:storyNum/:chapterNum" element={<Reader />} />
           <Route path="/:authorSlug/:storyNum" element={<Reader />} />
           <Route path="/:authorSlug" element={<Reader />} />
           <Route path="/" element={<Reader />} />

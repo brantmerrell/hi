@@ -22,6 +22,14 @@ export interface Sentence {
   words: SentenceWord[] | undefined;
 }
 
+export interface Chapter {
+  id: string;
+  position: number;
+  title_hi: string | null;
+  title_en: string | null;
+  source_url: string | null;
+}
+
 export interface Story {
   id: string;
   position: number | null;
@@ -30,6 +38,7 @@ export interface Story {
   author: string;
   author_slug: string;
   source_url: string;
+  chapters: Chapter[];
 }
 
 export interface User {

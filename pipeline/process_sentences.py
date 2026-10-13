@@ -2,22 +2,28 @@
 process_sentences.py — Segment, translate, romanize, and insert a story into the database.
 
 Usage:
-    python process_sentences.py <slug> --position <n>
+    python process_sentences.py <slug> --position <n> [--chapter <c>]
 
 Example:
     python process_sentences.py story-938-94c-924 --position 2
 
 The slug must match a file pair in data/raw/<slug>.txt and data/raw/<slug>.json,
-created by fetch_text.py. --position is required and must not already be in use for the story's author.
+created by fetch_text.py. --position is the story (book) position for the author.
+Without --chapter, it must be unused and a new single-chapter story is created. With
+--chapter, the text is added as that chapter of the existing story at --position
+(or, if no story is there yet, of a new one titled by the fetched page).
 
 This script:
   1. Segments the raw text into sentences on Devanagari danda (।) and standard punctuation.
-  2. Calls Azure Translator to get English translation + word-level alignment per sentence.
+  2. Translates each sentence to English via the provider chosen by TRANSLATOR
+     (google by default, or azure). Azure also gives word-level alignment, which
+     is used for word glosses; otherwise each word is translated on its own.
   3. Calls Aksharamukha to romanize each sentence and each surface word form.
   4. Inserts Story, Sentence, and SentenceWord rows into PostgreSQL.
   5. Skips TTS audio — audio_path is left NULL and can be filled in later.
 
-Requires environment variables: DATABASE_URL, AZURE_TRANSLATOR_KEY, AZURE_TRANSLATOR_REGION
+Requires environment variables: DATABASE_URL, plus GOOGLE_CLOUD_API_KEY (TRANSLATOR=google)
+or AZURE_TRANSLATOR_KEY and AZURE_TRANSLATOR_REGION (TRANSLATOR=azure)
 """
 
 import argparse
@@ -29,14 +35,14 @@ import uuid
 from pathlib import Path
 
 import psycopg2
-import requests
 from aksharamukha import transliterate
 from dotenv import load_dotenv
+
+from translators import Translator, get_translator
 
 load_dotenv(Path(__file__).parent.parent / "backend" / ".env")
 
 DATA_DIR = Path(__file__).parent.parent / "data" / "raw"
-AZURE_ENDPOINT = "https://api.cognitive.microsofttranslator.com/translate"
 
 
 # ---------------------------------------------------------------------------
@@ -61,37 +67,8 @@ def segment_sentences(text: str) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
-# Azure Translator
+# Word glosses
 # ---------------------------------------------------------------------------
-
-def translate_with_alignment(text: str, key: str, region: str) -> tuple[str, str]:
-    """
-    Translate a Hindi sentence to English and return word-level alignment data.
-
-    Returns:
-        (english_translation, alignment_proj_string)
-
-    The alignment string format is "src_start:src_end-tgt_start:tgt_end ..."
-    where offsets are character positions (0-indexed, inclusive) within the
-    source and target strings respectively.
-    """
-    response = requests.post(
-        AZURE_ENDPOINT,
-        params={"api-version": "3.0", "from": "hi", "to": "en", "includeAlignment": "true"},
-        headers={
-            "Ocp-Apim-Subscription-Key": key,
-            "Ocp-Apim-Subscription-Region": region,
-            "Content-Type": "application/json",
-        },
-        json=[{"text": text}],
-        timeout=30,
-    )
-    response.raise_for_status()
-    result = response.json()[0]["translations"][0]
-    english = result["text"]
-    alignment = result.get("alignment", {}).get("proj", "")
-    return english, alignment
-
 
 def parse_alignment(proj: str) -> list[tuple[int, int, int, int]]:
     """
@@ -139,6 +116,15 @@ def word_glosses(hindi: str, english: str, alignment: list[tuple]) -> list[tuple
         gloss = " ".join(tgt_parts)
         result.append((word, gloss))
     return result
+
+
+def glosses_for_sentence(translator: Translator, sentence: str, english: str, alignment_proj: str) -> list[tuple[str, str]]:
+    """Word glosses from provider alignment when available, else per-word translation."""
+    if translator.supports_alignment:
+        return word_glosses(sentence, english, parse_alignment(alignment_proj))
+    words = sentence.split()
+    translations = translator.translate_batch(words) if words else []
+    return list(zip(words, translations))
 
 
 # ---------------------------------------------------------------------------
@@ -196,16 +182,40 @@ def upsert_story(cur, meta: dict, title_en: str, position: int) -> str:
     return story_id
 
 
-def insert_sentence(cur, story_id: str, seq: int, deva: str, roman: str, english: str) -> str:
+def find_story(cur, author_slug: str, position: int) -> str | None:
+    cur.execute(
+        "SELECT s.id FROM stories s JOIN authors a ON a.id = s.author_id WHERE a.slug = %s AND s.position = %s",
+        (author_slug, position),
+    )
+    row = cur.fetchone()
+    return row[0] if row else None
+
+
+def create_chapter(
+    cur, story_id: str, position: int, title_hi: str | None, title_en: str | None, source_url: str
+) -> str:
+    """Insert a chapter and return its UUID."""
+    chapter_id = str(uuid.uuid4())
+    cur.execute(
+        """
+        INSERT INTO chapters (id, story_id, position, title_hi, title_en, source_url)
+        VALUES (%s, %s, %s, %s, %s, %s)
+        """,
+        (chapter_id, story_id, position, title_hi, title_en, source_url),
+    )
+    return chapter_id
+
+
+def insert_sentence(cur, story_id: str, chapter_id: str, seq: int, deva: str, roman: str, english: str) -> str:
     """Insert a sentence row. Returns sentence UUID."""
     sentence_id = str(uuid.uuid4())
     cur.execute(
         """
-        INSERT INTO sentences (id, story_id, sequence_num, devanagari, romanized, english)
-        VALUES (%s, %s, %s, %s, %s, %s)
+        INSERT INTO sentences (id, story_id, chapter_id, sequence_num, devanagari, romanized, english)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT DO NOTHING
         """,
-        (sentence_id, story_id, seq, deva, roman, english),
+        (sentence_id, story_id, chapter_id, seq, deva, roman, english),
     )
     return sentence_id
 
@@ -249,7 +259,8 @@ def insert_sentence_words(cur, sentence_id: str, glosses: list[tuple[str, str]])
 def main() -> None:
     parser = argparse.ArgumentParser(description="Process and insert a story into the database.")
     parser.add_argument("slug", help="Slug matching data/raw/<slug>.txt and .json")
-    parser.add_argument("--position", type=int, required=True, help="Story position (unique per author)")
+    parser.add_argument("--position", type=int, required=True, help="Story (book) position, unique per author")
+    parser.add_argument("--chapter", type=int, help="Add as this chapter of the story at --position")
     args = parser.parse_args()
 
     slug = args.slug.lstrip("-")
@@ -266,38 +277,38 @@ def main() -> None:
     text = text_path.read_text(encoding="utf-8")
 
     database_url = os.environ.get("DATABASE_URL")
-    azure_key = os.environ.get("AZURE_TRANSLATOR_KEY")
-    azure_region = os.environ.get("AZURE_TRANSLATOR_REGION", "eastus")
 
     if not database_url:
         print("Error: DATABASE_URL not set in environment")
         sys.exit(1)
-    if not azure_key:
-        print("Error: AZURE_TRANSLATOR_KEY not set in environment")
-        sys.exit(1)
+    translator = get_translator()
 
     conn = get_connection(database_url)
     cur = conn.cursor()
 
-    # Fail immediately if position is already taken for this author
-    cur.execute(
-        """
-        SELECT s.title_hi FROM stories s JOIN authors a ON a.id = s.author_id
-        WHERE a.slug = %s AND s.position = %s
-        """,
-        (meta.get("author_slug", "munshi-premchand"), position),
-    )
-    conflict = cur.fetchone()
-    if conflict:
-        print(f"Error: position {position} is already used for this author by '{conflict[0]}'")
+    author_slug = meta.get("author_slug", "munshi-premchand")
+    existing_story_id = find_story(cur, author_slug, position)
+    if args.chapter is None and existing_story_id:
+        print(f"Error: story position {position} is already used for this author; pass --chapter to add to it")
         cur.close()
         conn.close()
         sys.exit(1)
+    if args.chapter is not None and existing_story_id:
+        cur.execute(
+            "SELECT 1 FROM chapters WHERE story_id = %s AND position = %s", (existing_story_id, args.chapter)
+        )
+        if cur.fetchone():
+            print(f"Error: chapter {args.chapter} already exists for that story")
+            cur.close()
+            conn.close()
+            sys.exit(1)
 
-    # Translate the title
+    # Translate the title (the chapter name when adding a chapter, e.g. 'सप्तसरोज/उपदेश' -> 'उपदेश')
+    chapter_title_hi = meta["title_hi"].split("/")[-1].replace("_", " ").strip()
     print(f"Translating title '{meta['title_hi']}'...")
     try:
-        title_en, _ = translate_with_alignment(meta["title_hi"], azure_key, azure_region)
+        title_en, _ = translator.translate(meta["title_hi"])
+        chapter_title_en, _ = translator.translate(chapter_title_hi)
     except Exception as e:
         print(f"Error translating title: {e}")
         cur.close()
@@ -308,7 +319,13 @@ def main() -> None:
     sentences = segment_sentences(text)
     print(f"Found {len(sentences)} sentences in {slug}")
 
-    story_id = upsert_story(cur, meta, title_en, position)
+    story_id = existing_story_id or upsert_story(cur, meta, title_en, position)
+    if args.chapter is None:
+        chapter_id = create_chapter(cur, story_id, 1, None, None, meta["source_url"])
+    else:
+        chapter_id = create_chapter(
+            cur, story_id, args.chapter, chapter_title_hi, chapter_title_en, meta["source_url"]
+        )
     conn.commit()
     print(f"Story ID: {story_id}")
 
@@ -316,16 +333,15 @@ def main() -> None:
         print(f"  [{seq + 1}/{len(sentences)}] {sentence[:60]}...")
 
         try:
-            english, alignment_proj = translate_with_alignment(sentence, azure_key, azure_region)
+            english, alignment_proj = translator.translate(sentence)
+            glosses = glosses_for_sentence(translator, sentence, english, alignment_proj)
         except Exception as e:
-            print(f"    Azure error, skipping: {e}")
+            print(f"    {translator.name} error, skipping: {e}")
             continue
 
         roman = romanize(sentence)
-        alignment = parse_alignment(alignment_proj)
-        glosses = word_glosses(sentence, english, alignment)
 
-        sentence_id = insert_sentence(cur, story_id, seq, sentence, roman, english)
+        sentence_id = insert_sentence(cur, story_id, chapter_id, seq, sentence, roman, english)
         insert_sentence_words(cur, sentence_id, glosses)
         conn.commit()
 

@@ -7,22 +7,34 @@ import SentenceView from "../components/SentenceView";
 import WordGloss from "../components/WordGloss";
 import { useAuth } from "../context/AuthContext";
 import { apiUrl } from "../api";
-import type { Sentence, Story } from "../types";
+import type { Chapter, Sentence, Story } from "../types";
 
 interface Bookmark {
   author_slug: string;
   story_position: number | null;
+  chapter_position: number;
   sentence_seq_num: number;
 }
 
+const readerPath = (author: string, story: number, chapter: number, sentenceNum: number) =>
+  `/${author}/${story}/${chapter}/${sentenceNum}`;
+
 export default function Reader() {
   const { user, setUser } = useAuth();
-  const params = useParams<{ authorSlug?: string; storyNum?: string; sentenceNum?: string }>();
+  const params = useParams<{
+    authorSlug?: string;
+    storyNum?: string;
+    chapterNum?: string;
+    sentenceNum?: string;
+  }>();
   // Legacy URLs were /:storyNum/:sentenceNum; a numeric first segment can't be an author slug
   const isLegacyUrl = params.authorSlug !== undefined && /^\d+$/.test(params.authorSlug);
   const authorSlug = isLegacyUrl ? undefined : params.authorSlug;
   const storyNumStr = isLegacyUrl ? params.authorSlug : params.storyNum;
+  // Pre-chapter URLs were /:author/:storyNum/:sentenceNum, which now parses as a chapter
+  const chapterNumStr = isLegacyUrl ? undefined : params.chapterNum;
   const sentenceNumStr = isLegacyUrl ? params.storyNum : params.sentenceNum;
+  const [currentChapter, setCurrentChapter] = useState<Chapter | null>(null);
   const navigate = useNavigate();
   const [stories, setStories] = useState<Story[]>([]);
   const [currentStory, setCurrentStory] = useState<Story | null>(null);
@@ -79,7 +91,7 @@ export default function Reader() {
         // Rule: legacy /:storyNum[/:sentenceNum] URL → same story under the first author
         if (isLegacyUrl && story) {
           skipBookmarkSave.current = true;
-          navigate(`/${story.author_slug}/${story.position}/${sentenceNumStr ?? 1}`, { replace: true });
+          navigate(readerPath(story.author_slug, story.position ?? 0, 1, Number(sentenceNumStr ?? 1)), { replace: true });
           return;
         }
 
@@ -89,7 +101,7 @@ export default function Reader() {
           if (authorStories.length) {
             skipBookmarkSave.current = true;
             if (bm && bm.author_slug === authorSlug && bm.story_position !== null) {
-              navigate(`/${authorSlug}/${bm.story_position}/${bm.sentence_seq_num + 1}`, { replace: true });
+              navigate(readerPath(authorSlug, bm.story_position, bm.chapter_position, bm.sentence_seq_num + 1), { replace: true });
             } else {
               navigate(`/${authorSlug}/${authorStories[0].position ?? 0}/1`, { replace: true });
             }
@@ -97,11 +109,11 @@ export default function Reader() {
           }
         }
 
-        // Rule: no story in URL or story not found → redirect to bookmark or first story/sentence
+        // Rule: no story in URL or story not found → redirect to bookmark or first story
         if (!storyNumStr || !story) {
           skipBookmarkSave.current = true;
           if (bm && bm.story_position !== null) {
-            navigate(`/${bm.author_slug}/${bm.story_position}/${bm.sentence_seq_num + 1}`, { replace: true });
+            navigate(readerPath(bm.author_slug, bm.story_position, bm.chapter_position, bm.sentence_seq_num + 1), { replace: true });
           } else {
             const fallback = stories[0];
             navigate(`/${fallback.author_slug}/${fallback.position ?? 0}/1`, { replace: true });
@@ -109,35 +121,67 @@ export default function Reader() {
           return;
         }
 
-        // Story exists — load its sentences
-        setCurrentStory(story);
-        wordCache.current = new Map();
-        setCurrentDetail(null);
-
-        const sentencesRes = await fetch(apiUrl(`/api/stories/${story.id}/sentences?limit=500`));
-        if (!sentencesRes.ok) throw new Error("Failed to fetch sentences");
-        const sentencesData: Sentence[] = await sentencesRes.json();
-        setSentences(sentencesData);
-
-        if (!sentenceNumStr) {
-          // Rule: story exists, no sentence → use bookmark if same story, else first sentence
+        // Rule: /:author/:story/:n on a single-chapter story is a pre-chapter sentence URL
+        if (chapterNumStr && !sentenceNumStr && story.chapters.length === 1 && chapterNumStr !== "1") {
           skipBookmarkSave.current = true;
-          const bmSeq =
-            bm && bm.author_slug === story.author_slug && bm.story_position === storyPos
-              ? bm.sentence_seq_num
-              : null;
-          const targetSeqNum = bmSeq !== null ? bmSeq + 1 : 1;
-          navigate(`/${story.author_slug}/${storyPos}/${targetSeqNum}`, { replace: true });
+          navigate(readerPath(story.author_slug, storyPos!, story.chapters[0].position, Number(chapterNumStr)), { replace: true });
           return;
         }
 
-        // Rule: story and sentence both specified — validate sentence exists
+        // Rule: no chapter in URL → bookmark's chapter if same story, else first chapter
+        if (!chapterNumStr) {
+          skipBookmarkSave.current = true;
+          const sameStory = bm && bm.author_slug === story.author_slug && bm.story_position === storyPos;
+          const target = sameStory ? bm.chapter_position : (story.chapters[0]?.position ?? 1);
+          navigate(`/${story.author_slug}/${storyPos}/${target}`, { replace: true });
+          return;
+        }
+
+        // Rule: chapter not found → first chapter
+        const chapterPos = parseInt(chapterNumStr);
+        const chapter = story.chapters.find((c) => c.position === chapterPos) ?? null;
+        if (!chapter) {
+          skipBookmarkSave.current = true;
+          navigate(`/${story.author_slug}/${storyPos}/${story.chapters[0]?.position ?? 1}`, { replace: true });
+          return;
+        }
+
+        // Story and chapter exist — load the chapter's sentences
+        setCurrentStory(story);
+        setCurrentChapter(chapter);
+        wordCache.current = new Map();
+        setCurrentDetail(null);
+
+        const sentencesRes = await fetch(
+          apiUrl(`/api/stories/${story.id}/sentences?chapter_id=${chapter.id}&limit=500`),
+        );
+        if (!sentencesRes.ok) throw new Error("Failed to fetch sentences");
+        const sentencesData: Sentence[] = await sentencesRes.json();
+        setSentences(sentencesData);
+        if (!sentencesData.length) return;
+
+        const firstSeqNum = sentencesData[0].sequence_num;
+
+        if (!sentenceNumStr) {
+          // Rule: no sentence → bookmark if in this chapter, else first sentence of the chapter
+          skipBookmarkSave.current = true;
+          const bmSeq =
+            bm &&
+            bm.author_slug === story.author_slug &&
+            bm.story_position === storyPos &&
+            bm.chapter_position === chapterPos
+              ? bm.sentence_seq_num
+              : null;
+          navigate(readerPath(story.author_slug, storyPos!, chapterPos, (bmSeq ?? firstSeqNum) + 1), { replace: true });
+          return;
+        }
+
+        // Rule: sentence must exist within this chapter, else redirect to the chapter's first
         const seqNum = parseInt(sentenceNumStr) - 1;
         const idx = sentencesData.findIndex((s) => s.sequence_num === seqNum);
         if (idx === -1) {
-          // Rule: sentence doesn't exist → redirect to first sentence of story
           skipBookmarkSave.current = true;
-          navigate(`/${story.author_slug}/${storyPos}/1`, { replace: true });
+          navigate(readerPath(story.author_slug, storyPos!, chapterPos, firstSeqNum + 1), { replace: true });
           return;
         }
         // Valid — index will be set by the sync effect below
@@ -148,7 +192,7 @@ export default function Reader() {
       }
     }
     loadSentences();
-  }, [stories, authorSlug, storyNumStr]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [stories, authorSlug, storyNumStr, chapterNumStr]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync index from URL params whenever params or sentences change
   // sentenceNum in URL is 1-based; sequence_num in DB is 0-based
@@ -198,7 +242,17 @@ export default function Reader() {
   function goTo(newIdx: number) {
     setActiveWordId(null);
     const s = sentences[newIdx];
-    if (s && currentStory) navigate(`/${currentStory.author_slug}/${currentStory.position ?? storyNumStr ?? 0}/${s.sequence_num + 1}`);
+    if (s && currentStory && currentChapter) {
+      navigate(readerPath(currentStory.author_slug, currentStory.position ?? Number(storyNumStr ?? 0), currentChapter.position, s.sequence_num + 1));
+    }
+  }
+
+  const nextChapter = currentStory?.chapters.find((c) => c.position > (currentChapter?.position ?? 0));
+  function goToNextChapter() {
+    if (currentStory && nextChapter) {
+      setActiveWordId(null);
+      navigate(`/${currentStory.author_slug}/${currentStory.position ?? Number(storyNumStr ?? 0)}/${nextChapter.position}`);
+    }
   }
 
   if (loading) return <main className="container is-max-desktop py-6 px-4"><p>Loading...</p></main>;
@@ -219,7 +273,7 @@ export default function Reader() {
         ☰ Stories
       </button>
       <div className={sidebarOpen ? undefined : "is-hidden-mobile"}>
-        <StorySidebar stories={stories} currentStory={currentStory} />
+        <StorySidebar stories={stories} currentStory={currentStory} currentChapterId={currentChapter?.id} />
       </div>
     </aside>
     <main className="column is-max-desktop">
@@ -256,9 +310,18 @@ export default function Reader() {
             </p>
           )}
           <p className="is-size-7 has-text-grey">
-            {currentStory.author} · sentence {index + 1} of {sentences.length}
+            {currentStory.author}
+            {currentStory.chapters.length > 1 && currentChapter && (
+              <>
+                {" · "}chapter {currentChapter.position} of {currentStory.chapters.length}
+                {(currentChapter.title_hi ?? currentChapter.title_en) && (
+                  <span className="devanagari"> ({currentChapter.title_hi ?? currentChapter.title_en})</span>
+                )}
+              </>
+            )}
+            {" · "}sentence {index + 1} of {sentences.length}
             {" · "}
-            <a href={currentStory.source_url} target="_blank" rel="noopener noreferrer">
+            <a href={currentChapter?.source_url ?? currentStory.source_url} target="_blank" rel="noopener noreferrer">
               source
             </a>
           </p>
@@ -291,9 +354,11 @@ export default function Reader() {
 
       <Navigation
         onPrev={() => goTo(Math.max(0, index - 1))}
-        onNext={() => goTo(Math.min(sentences.length - 1, index + 1))}
+        onNext={() =>
+          index < sentences.length - 1 ? goTo(index + 1) : goToNextChapter()
+        }
         hasPrev={index > 0}
-        hasNext={index < sentences.length - 1}
+        hasNext={index < sentences.length - 1 || nextChapter !== undefined}
       />
     </main>
     </div>

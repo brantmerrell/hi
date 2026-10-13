@@ -5,7 +5,7 @@ Usage:
     python enrich_glosses.py
 
 Processes all sentence_words that have no lemma_id (i.e. not yet enriched).
-Translates each unique surface form individually via Azure Translator to get a
+Translates each unique surface form individually via the TRANSLATOR provider (google or azure) to get a
 context-free dictionary-level gloss ("theft", "hidden") rather than a fragment
 of the sentence-level translation.
 
@@ -20,7 +20,8 @@ natural English translation from process_sentences.py.
 
 Idempotent: re-running skips words that already have a lemma_id.
 
-Requires environment variables: DATABASE_URL, AZURE_TRANSLATOR_KEY, AZURE_TRANSLATOR_REGION
+Requires environment variables: DATABASE_URL, plus GOOGLE_CLOUD_API_KEY (TRANSLATOR=google)
+or AZURE_TRANSLATOR_KEY and AZURE_TRANSLATOR_REGION (TRANSLATOR=azure)
 """
 
 import os
@@ -29,30 +30,12 @@ import uuid
 from pathlib import Path
 
 import psycopg2
-import requests
 from dotenv import load_dotenv
+
+from translators import get_translator
 
 load_dotenv(Path(__file__).parent.parent / "backend" / ".env")
 
-AZURE_ENDPOINT = "https://api.cognitive.microsofttranslator.com/translate"
-BATCH_SIZE = 100  # Azure allows up to 100 texts per request
-
-
-def batch_translate(texts: list[str], key: str, region: str) -> list[str]:
-    """Translate a batch of texts from Hindi to English. Returns translations in order."""
-    response = requests.post(
-        AZURE_ENDPOINT,
-        params={"api-version": "3.0", "from": "hi", "to": "en"},
-        headers={
-            "Ocp-Apim-Subscription-Key": key,
-            "Ocp-Apim-Subscription-Region": region,
-            "Content-Type": "application/json",
-        },
-        json=[{"text": t} for t in texts],
-        timeout=30,
-    )
-    response.raise_for_status()
-    return [item["translations"][0]["text"] for item in response.json()]
 
 
 def get_connection(database_url: str):
@@ -62,15 +45,12 @@ def get_connection(database_url: str):
 
 def main() -> None:
     database_url = os.environ.get("DATABASE_URL")
-    azure_key = os.environ.get("AZURE_TRANSLATOR_KEY")
-    azure_region = os.environ.get("AZURE_TRANSLATOR_REGION", "eastus")
 
     if not database_url:
         print("Error: DATABASE_URL not set")
         sys.exit(1)
-    if not azure_key:
-        print("Error: AZURE_TRANSLATOR_KEY not set")
-        sys.exit(1)
+    translator = get_translator()
+    batch_size = translator.batch_size
 
     conn = get_connection(database_url)
     cur = conn.cursor()
@@ -92,17 +72,17 @@ def main() -> None:
 
     print(f"Enriching {len(unique_words)} unique word forms...")
 
-    total_batches = (len(unique_words) + BATCH_SIZE - 1) // BATCH_SIZE
+    total_batches = (len(unique_words) + batch_size - 1) // batch_size
 
-    for batch_num, batch_start in enumerate(range(0, len(unique_words), BATCH_SIZE)):
-        batch = unique_words[batch_start : batch_start + BATCH_SIZE]
+    for batch_num, batch_start in enumerate(range(0, len(unique_words), batch_size)):
+        batch = unique_words[batch_start : batch_start + batch_size]
         texts = [w[0] for w in batch]
 
         print(f"  Batch {batch_num + 1}/{total_batches}: translating {len(texts)} words...")
         try:
-            translations = batch_translate(texts, azure_key, azure_region)
+            translations = translator.translate_batch(texts)
         except Exception as e:
-            print(f"  Azure error on batch {batch_num + 1}: {e}")
+            print(f"  {translator.name} error on batch {batch_num + 1}: {e}")
             continue
 
         for (surface_deva, surface_roman), english_def in zip(batch, translations):
