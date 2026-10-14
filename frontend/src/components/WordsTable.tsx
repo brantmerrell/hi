@@ -37,15 +37,16 @@ export default function WordsTable({
     <div className="table-container">
       <table className="table is-fullwidth is-hoverable" style={{ minWidth: 640, tableLayout: "fixed" }}>
         <colgroup>
-          <col style={{ width: "12%" }} />
+          <col style={{ width: "10%" }} />
+          <col style={{ width: "14%" }} />
           <col style={{ width: "12%" }} />
           <col style={{ width: "28%" }} />
           <col style={{ width: "26%" }} />
           <col style={{ width: "10%" }} />
-          <col style={{ width: "12%" }} />
         </colgroup>
         <thead>
           <tr>
+            <th aria-label="Play" />
             {COLUMNS.map(({ column, label, className }) => (
               <th key={column} className={className}>
                 <button
@@ -70,6 +71,13 @@ export default function WordsTable({
                 transition: "background-color 0.2s ease-out",
               }}
             >
+              <td className="has-text-centered">
+                {word.word_audio_path && word.sentence_word_id && (
+                  <button className="button is-small" onClick={() => onPlay(word)} title="Play audio">
+                    ▶
+                  </button>
+                )}
+              </td>
               <td className="devanagari" style={{ fontSize: "1.2rem" }}>{word.surface_devanagari}</td>
               <td className="has-text-grey is-size-7">{word.surface_romanized}</td>
               <td className="has-text-grey is-size-7">
@@ -85,13 +93,6 @@ export default function WordsTable({
                 />
               </td>
               <td className="has-text-right has-text-weight-bold">{word.play_count}</td>
-              <td className="has-text-centered">
-                {word.word_audio_path && word.sentence_word_id && (
-                  <button className="button is-small" onClick={() => onPlay(word)} title="Play audio">
-                    ▶
-                  </button>
-                )}
-              </td>
             </tr>
           ))}
         </tbody>
