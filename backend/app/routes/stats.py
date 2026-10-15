@@ -155,8 +155,15 @@ async def get_word_stats(
                 best_words[key] = word
             elif word.english_gloss and not best_words[key].english_gloss:
                 best_words[key] = word
+
+        # Audio is per surface form; the chosen row may lack it while siblings have it
+        audio_paths = {}
+        for word in words:
+            if word.word_audio_path:
+                audio_paths.setdefault((word.surface_devanagari, word.surface_romanized), word.word_audio_path)
     else:
         best_words = {}
+        audio_paths = {}
 
     # Build results in the correct order
     results = []
@@ -172,7 +179,7 @@ async def get_word_stats(
                     note=word.note,
                     word_sense_id=str(word.word_sense_id) if word.word_sense_id else None,
                     play_count=play_counts[surface_form],
-                    word_audio_path=word.word_audio_path,
+                    word_audio_path=word.word_audio_path or audio_paths.get(surface_form),
                     sentence_word_id=str(word.id),
                 )
             )
